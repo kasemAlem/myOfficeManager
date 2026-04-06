@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: archfirm-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # Will pull standard environment variables mapping
+      - NODE_ENV=production
+    volumes:
+      # Map the local Prisma directory to persist the SQLite database layer
+      - ./prisma:/app/prisma
+      # Map the environment variables securely
+      - ./.env:/app/.env

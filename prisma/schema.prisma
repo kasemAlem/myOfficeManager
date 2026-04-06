@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id                   String                @id @default(uuid())
+  email                String                @unique
+  passwordHash         String
+  name                 String
+  role                 String                @default("EMPLOYEE")
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  auditLogs            AuditLog[]
+  businessExpenses     BusinessExpense[]
+  projectPayments      ProjectPayment[]
+  timeLogs             TimeLog[]
+  timesheetSubmissions TimesheetSubmission[]
+  resetTokens          PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Project {
+  id            String             @id @default(uuid())
+  name          String
+  totalFees     Float
+  clientName    String
+  clientEmail   String?
+  clientPhone   String?
+  status        String             @default("PLANNING")
+  address       String?
+  notes         String?
+  budget        Float?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  documentLinks DocumentLink[]
+  contacts      ProjectContact[]
+  milestones    ProjectMilestone[]
+  payments      ProjectPayment[]
+  timeLogs      TimeLog[]
+}
+
+model ProjectMilestone {
+  id          String    @id @default(uuid())
+  projectId   String
+  name        String
+  feeAmount   Float?
+  isCompleted Boolean   @default(false)
+  dueDate     DateTime?
+  orderIndex  Int       @default(0)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectPayment {
+  id          String   @id @default(uuid())
+  projectId   String
+  amount      Float
+  datePaid    DateTime
+  notes       String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model TimeLog {
+  id         String   @id @default(uuid())
+  employeeId String
+  projectId  String?
+  category   String   @default("WORK") // WORK, SICK, HOLIDAY, ABSENCE
+  hours      Float
+  dateLogged DateTime
+  notes      String?
+  createdAt  DateTime @default(now())
+  project    Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employee   User     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, dateLogged])
+}
+
+model DocumentLink {
+  id        String   @id @default(uuid())
+  projectId String
+  title     String
+  url       String
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectContact {
+  id        String   @id @default(uuid())
+  projectId String
+  name      String
+  phone     String?
+  email     String?
+  title     String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model BusinessExpense {
+  id          String   @id @default(uuid())
+  category    String
+  amount      Float
+  date        DateTime
+  vendor      String?
+  notes       String?
+  isPaid      Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+}
+
+model FinancialTarget {
+  id           String   @id @default(uuid())
+  year         Int      @unique
+  targetAmount Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  entity    String
+  entityId  String
+  details   String?
+  userId    String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model TimesheetSubmission {
+  id          String   @id @default(uuid())
+  userId      String
+  month       Int
+  year        Int
+  status      String   @default("SUBMITTED")
+  submittedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month, year])
+}

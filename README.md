@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Management OS (White-Label Project Platform)
 
-## Getting Started
+A fully generic, highly customizable SaaS deployment built on Next.js 16 (App Router), Prisma, and SQLite. Out of the box, this application manages Architecture, Design, Engineering, and Software pipelines through dynamic configuration parameters—without ever touching the underlying source code.
 
-First, run the development server:
+This platform comes fully equipped with a secure Authentication layer, Team Timesheets management, Auditing workflows, multi-layer Financial projections, and interactive pipeline boards.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 1. Preparing the Environment Settings
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Before deploying anywhere, you must construct an environment mapping for the platform.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Copy the Configuration Template**:
+   Copy `.env.example` to a live `.env` file containing your production settings.
+   ```bash
+   cp .env.example .env
+   ```
 
-## Learn More
+2. **Supply your Details inside `.env`**:
+   Populate custom variables like `NEXT_PUBLIC_APP_NAME`, `NEXT_PUBLIC_COMPANY_NAME`, and your targeted SMTP Outbox keys.
+   *(Note: Set an absolute URL or local path for `NEXT_PUBLIC_APP_LOGO` to instantly brand the primary dashboard UI.)*
 
-To learn more about Next.js, take a look at the following resources:
+3. **Define the Initial Super Administrator**:
+   Make sure `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` are safely defined inside your `.env`! These fallback credentials will be securely injected specifically to orchestrate your new installation.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🐳 2. Deploying Locally via Docker (Container)
 
-## Deploy on Vercel
+A native `docker-compose.yml` file is provided that securely maps the application alongside a persistent SQLite Database layer ensuring data isn't wiped across container restarts.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Start the Docker daemon and navigate to this directory.
+2. Build and boot the stack:
+   ```bash
+   docker-compose up --build -d
+   ```
+3. Your application is now running securely bounded to `localhost:3000`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## ☁️ 3. Deploying to a Linux VPS (Host Node / Nginx)
+
+If deploying to an Ubuntu/Debian Host (like DigitalOcean, AWS EC2, or Hetzner) directly via Node runtime instead of Docker.
+
+1. Ensure **Node.js (v18+)** and **npm** are installed.
+2. Clone the repository and navigate inside.
+3. Install strict dependencies and push schema definitions:
+   ```bash
+   npm ci
+   ```
+4. Build the Next.js Production Engine:
+   ```bash
+   npm run build
+   ```
+5. **Critically Important - Initialize the Database:** Run the database purge command. This wipes historical artifacts entirely and uses your `.env` parameters to deploy the sole Administrative User mentioned above:
+   ```bash
+   npm run db:clean
+   ```
+6. Start the deployment server natively (or via PM2):
+   ```bash
+   npm start
+   ```
+
+**(Optional)** Map NGINX or Apache proxy onto port `3000` to bind your official domain to the live node environment!
+
+---
+
+## 🛠 Advanced Features
+
+- **Themes**: Both Administrators and Managers retain access to the **Themes & Appearance** switch within the Settings Dashboard.
+- **Reporting**: Weekly/Monthly attendance arrays can be fired utilizing standard JSON Node Mailers via the `/api/timesheets/report` boundary.
