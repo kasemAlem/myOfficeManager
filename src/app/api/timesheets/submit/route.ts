@@ -12,8 +12,8 @@ export async function GET(request: Request) {
     const year = parseInt(searchParams.get('year') || '');
 
     const requestedUserId = searchParams.get('userId');
-    let targetUserId = (session as any).userId;
-    if (((session as any).role === 'ADMIN' || (session as any).role === 'MANAGER') && requestedUserId) {
+    let targetUserId = session.userId as string;
+    if ((session.role === 'ADMIN' || session.role === 'MANAGER') && requestedUserId) {
       targetUserId = requestedUserId;
     }
 
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
     const submission = await prisma.timesheetSubmission.create({
       data: {
-        userId: (session as any).userId,
+        userId: session.userId as string,
         month,
         year,
         status: 'SUBMITTED',
@@ -150,17 +150,17 @@ export async function POST(request: Request) {
             ]
           });
       }
-    } catch (emailError: any) {
-      console.error('Email Dispatch Error:', emailError.message);
+    } catch (emailError) {
+      console.error('Email Dispatch Error:', emailError);
       // Failsafe: Continue securely instead of rejecting the database submission
     }
 
     return NextResponse.json(submission, { status: 201 });
-  } catch (error: any) {
-    console.error('Submission Error:', error.message);
-    if (error.code === 'P2002') {
+  } catch (error) {
+    console.error('Submission Error:', error);
+    if (error instanceof Error && 'code' in error && (error as { code: string }).code === 'P2002') {
       return NextResponse.json({ error: 'Already submitted for this period' }, { status: 400 });
     }
-    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -75,6 +75,9 @@ model ProjectPayment {
   createdAt   DateTime @default(now())
   createdBy   User?    @relation(fields: [createdById], references: [id])
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([datePaid])
 }
 
 model TimeLog {
@@ -88,6 +91,10 @@ model TimeLog {
   createdAt  DateTime @default(now())
   project    Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   employee   User     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([projectId])
+  @@index([dateLogged])
 }
 
 model DocumentLink {
@@ -122,6 +129,9 @@ model BusinessExpense {
   createdById String?
   createdAt   DateTime @default(now())
   createdBy   User?    @relation(fields: [createdById], references: [id])
+
+  @@index([date])
+  @@index([category])
 }
 
 model FinancialTarget {
@@ -141,6 +151,9 @@ model AuditLog {
   userId    String?
   createdAt DateTime @default(now())
   user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@index([userId])
 }
 
 model TimesheetSubmission {

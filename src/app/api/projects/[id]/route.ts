@@ -2,16 +2,20 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/audit';
+import type { Prisma } from '@prisma/client';
 
-export async function GET(request: Request, context: any) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
-    const params = await context.params;
-    if (!params?.id) return NextResponse.json({ error: 'Missing project ID' }, { status: 400 });
 
-    const includeConfig: any = {
+    const { id } = await params;
+    if (!id) return NextResponse.json({ error: 'Missing project ID' }, { status: 400 });
+
+    const includeConfig: Prisma.ProjectInclude = {
       milestones: { orderBy: { createdAt: 'asc' } },
       payments: { orderBy: { datePaid: 'desc' } },
       documentLinks: true,
@@ -25,35 +29,33 @@ export async function GET(request: Request, context: any) {
     }
 
     const project = await prisma.project.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: includeConfig
     });
 
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
     return NextResponse.json(project);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Project Fetch Error:', error);
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      details: error.message 
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function PUT(request: Request, context: any) {
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const params = await context.params;
+    const { id } = await params;
     const data = await request.json();
 
-    // Validate required fields for the record but allow partial updates in the logic
-    const updateData: any = {};
+    const updateData: Prisma.ProjectUpdateInput = {};
     if (data.name !== undefined) {
       updateData.name = data.name;
-      // Also update clientName if it's not explicitly provided
       updateData.clientName = data.clientName ?? data.name;
     }
     if (data.status !== undefined) updateData.status = data.status;
@@ -64,50 +66,47 @@ export async function PUT(request: Request, context: any) {
     }
 
     const project = await prisma.project.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData
     });
 
-    // Record Audit Log
     await recordAuditLog({
       action: 'PROJECT_UPDATED',
       entity: 'Project',
       entityId: project.id,
       details: `Project updated: ${Object.keys(updateData).join(', ')}`,
-      userId: (session as any).userId
+      userId: session.userId as string
     });
 
     return NextResponse.json(project);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Project Update Error:', error);
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      details: error.message,
-      code: error.code 
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function DELETE(request: Request, context: any) {
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if ((session as any).role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (session.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const params = await context.params;
+    const { id } = await params;
 
-    const projectToDelete = await prisma.project.findUnique({ where: { id: params.id } });
-    
-    await prisma.project.delete({ where: { id: params.id } });
+    const projectToDelete = await prisma.project.findUnique({ where: { id } });
 
-    // Record Audit Log
+    await prisma.project.delete({ where: { id } });
+
     if (projectToDelete) {
       await recordAuditLog({
         action: 'PROJECT_DELETED',
         entity: 'Project',
-        entityId: params.id,
+        entityId: id,
         details: `Project "${projectToDelete.name}" was permanently deleted.`,
-        userId: (session as any).userId
+        userId: session.userId as string
       });
     }
 

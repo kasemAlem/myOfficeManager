@@ -2,14 +2,16 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import { setSession } from '@/lib/auth';
+import { loginSchema, formatZodError } from '@/lib/validation';
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
-
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    const body = await request.json();
+    const result = loginSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
     }
+    const { email, password } = result.data;
 
     const user = await prisma.user.findUnique({
       where: { email },

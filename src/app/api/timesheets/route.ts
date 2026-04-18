@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { timeLogSchema, formatZodError } from '@/lib/validation';
 
 export async function GET(request: Request) {
   try {
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
     const monthStr = searchParams.get('month');
     const yearStr = searchParams.get('year');
 
-    let whereClause: any = {};
+    const whereClause: Record<string, unknown> = {};
     if (session.role === 'EMPLOYEE') {
       whereClause.employeeId = session.userId as string;
     } else if (requestedUserId) {
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
     });
 
     // Determine team topology for managers/admins
-    let teamMembers: any[] = [];
+    let teamMembers: { id: string; name: string; role: string }[] = [];
     if (session.role === 'ADMIN' || session.role === 'MANAGER') {
       teamMembers = await prisma.user.findMany({
         select: { id: true, name: true, role: true },
@@ -66,24 +67,29 @@ export async function POST(request: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const data = await request.json();
+    const body = await request.json();
+    const updateId = body.id;
+
+    const result = timeLogSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
+    }
+    const data = result.data;
     let timeLog;
 
-    if (data.id) {
-      // Security check: Verify ownership
+    if (updateId) {
       const existing = await prisma.timeLog.findFirst({
-        where: { id: data.id, employeeId: session.userId as string }
+        where: { id: updateId, employeeId: session.userId as string }
       });
       if (!existing) return NextResponse.json({ error: 'Not found or forbidden' }, { status: 404 });
 
       timeLog = await prisma.timeLog.update({
-        where: { id: data.id },
+        where: { id: updateId },
         data: {
           projectId: data.projectId || null,
-          category: data.category || 'WORK',
-          hours: Number(data.hours),
+          category: data.category,
+          hours: data.hours,
           notes: data.notes || '',
-          // explicitly not changing dateLogged, as its structural. If they change date, they should delete & re-add, though usually handled via day specific.
         }
       });
     } else {
@@ -91,8 +97,8 @@ export async function POST(request: Request) {
         data: {
           employeeId: session.userId as string,
           projectId: data.projectId || null,
-          category: data.category || 'WORK',
-          hours: Number(data.hours),
+          category: data.category,
+          hours: data.hours,
           dateLogged: new Date(data.dateLogged),
           notes: data.notes || '',
         }

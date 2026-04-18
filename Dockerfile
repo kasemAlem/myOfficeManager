@@ -33,8 +33,13 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy Prisma schema and migrations for runtime migrations
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/package.json ./package.json
+
 USER nextjs
-EXPOSE 3000
-ENV PORT=3000
+EXPOSE 3007
+ENV PORT=3007
 ENV HOSTNAME="0.0.0.0"
-CMD ["node", "server.js"]
+CMD npx prisma migrate deploy 2>/dev/null; node server.js

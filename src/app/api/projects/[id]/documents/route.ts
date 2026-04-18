@@ -1,18 +1,27 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { documentLinkSchema, formatZodError } from '@/lib/validation';
 
-export async function POST(request: Request, context: any) {
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const params = await context.params;
-    const data = await request.json();
+    const { id } = await params;
+    const body = await request.json();
+    const result = documentLinkSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
+    }
+    const data = result.data;
 
     const documentLink = await prisma.documentLink.create({
       data: {
-        projectId: params.id,
+        projectId: id,
         title: data.title,
         url: data.url
       }
@@ -24,7 +33,7 @@ export async function POST(request: Request, context: any) {
   }
 }
 
-export async function DELETE(request: Request, context: any) {
+export async function DELETE(request: Request) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

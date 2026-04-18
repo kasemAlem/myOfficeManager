@@ -13,8 +13,8 @@
 set -e
 
 # Configuration
-APP_CONTAINER_NAME="archfirm-app"
-HEALTH_CHECK_URL="http://localhost:3000/api/health"
+APP_CONTAINER_NAME="officemanager-app"
+HEALTH_CHECK_URL="http://localhost:3007/api/health"
 LOG_FILE="backups/deploy.log"
 
 # Setup logging
@@ -39,17 +39,19 @@ fi
 
 # Step 3: Container Orchestration
 echo "Step 3/5: Rebuilding and restarting containers..."
-docker-compose down
-docker-compose up -d --build
+docker compose down
+docker compose up -d --build
 
 # Step 4: Database Migration
 echo "Step 4/5: Running database migrations (non-destructive)..."
 # Wait for DB to be initialized by Docker Healthcheck
 echo "Waiting for container orchestration to stabilize..."
-until [ "`docker inspect -f {{.State.Health.Status}} $APP_CONTAINER_NAME`"=="healthy" ]; do
+
+count=0
+# On Windows/Bash, comparing health state might need extra care with return values
+until [ "$(docker inspect -f {{.State.Health.Status}} $APP_CONTAINER_NAME 2>/dev/null)" == "healthy" ]; do
     echo -n "."
     sleep 2
-    # Add a timeout to prevent infinite loop
     ((count++))
     if [ $count -gt 30 ]; then echo "❌ Timeout waiting for app. Check docker logs."; exit 1; fi
 done
@@ -58,6 +60,7 @@ docker exec $APP_CONTAINER_NAME npm run db:migrate
 
 # Step 5: Health Verification
 echo "Step 5/5: Verifying overall system health..."
+# Use -k to allow local/untrusted certs if necessary, though unlikely on localhost:3000
 STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_CHECK_URL")
 
 if [ "$STATUS_CODE" -eq 200 ]; then

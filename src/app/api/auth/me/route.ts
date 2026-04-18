@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSession, verifyToken } from '@/lib/auth';
+import { getSession, signToken } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import * as jose from 'jose';
 
 export async function GET() {
   try {
@@ -17,18 +16,14 @@ export async function GET() {
 
     const response = NextResponse.json(user);
 
-    // Auto-refresh the JWT token if the role in the database has diverges from the token's payload
     if (user.role !== session.role) {
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret-development-only-x92');
-      const token = await new jose.SignJWT({ userId: user.id, email: user.email, role: user.role })
-        .setProtectedHeader({ alg: 'HS256' })
-        .setExpirationTime('24h')
-        .sign(secret);
+      const token = await signToken({ userId: user.id, role: user.role });
 
       response.cookies.set('auth_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
+        path: '/',
         maxAge: 86400
       });
     }

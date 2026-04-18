@@ -16,7 +16,7 @@ export async function recordAuditLog({
   userId
 }: AuditLogParams) {
   try {
-    await (prisma as any).auditLog.create({
+    await prisma.auditLog.create({
       data: {
         action,
         entity,

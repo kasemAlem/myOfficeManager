@@ -22,8 +22,8 @@ export async function GET(request: Request) {
     const requestedUserId = searchParams.get('userId');
 
     let targetUserId = undefined;
-    if ((session as any).role === 'EMPLOYEE') {
-      targetUserId = (session as any).userId;
+    if (session.role === 'EMPLOYEE') {
+      targetUserId = session.userId as string;
     } else if (requestedUserId) {
       targetUserId = requestedUserId;
     }
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
 
-    const whereClause: any = {
+    const whereClause: Record<string, unknown> = {
       dateLogged: {
         gte: startDate,
         lte: endDate
@@ -84,8 +84,8 @@ export async function GET(request: Request) {
       }
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Report Generation Error:', error);
-    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

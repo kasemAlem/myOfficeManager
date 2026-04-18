@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
+import { resetPasswordSchema, formatZodError } from '@/lib/validation';
 
 export async function POST(request: Request) {
   try {
-    const { token, newPassword } = await request.json();
-    
-    if (!token || !newPassword) {
-      return NextResponse.json({ error: 'Token and new password are required' }, { status: 400 });
+    const body = await request.json();
+    const result = resetPasswordSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
     }
-
-    if (newPassword.length < 6) {
-      return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
-    }
+    const { token, newPassword } = result.data;
 
     // Find and validate token
     const resetToken = await prisma.passwordResetToken.findUnique({

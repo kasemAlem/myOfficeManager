@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import bcrypt from 'bcrypt';
+import { teamCreateSchema, teamUpdateSchema, formatZodError } from '@/lib/validation';
 
 export async function GET() {
   try {
@@ -54,15 +55,18 @@ export async function PATCH(request: Request) {
     // Only admins explicitly can modify roles
     if (!session || session.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const data = await request.json();
-    if (!data.id) return NextResponse.json({ error: 'Missing user ID' }, { status: 400 });
-    if (!data.role && !data.password) return NextResponse.json({ error: 'Missing update fields' }, { status: 400 });
+    const body = await request.json();
+    const result = teamUpdateSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
+    }
+    const data = result.data;
 
     if (session.userId === data.id && data.role) {
         return NextResponse.json({ error: 'Cannot change your own role this way' }, { status: 400 });
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, string> = {};
     if (data.role) updateData.role = data.role;
     if (data.password) updateData.passwordHash = await bcrypt.hash(data.password, 10);
 
@@ -82,8 +86,12 @@ export async function POST(request: Request) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { name, email, password, role } = await request.json();
-    if (!name || !email || !password || !role) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    const body = await request.json();
+    const result = teamCreateSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
+    }
+    const { name, email, password, role } = result.data;
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) return NextResponse.json({ error: 'Email already exists' }, { status: 400 });

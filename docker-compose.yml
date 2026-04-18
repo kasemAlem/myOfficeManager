@@ -3,18 +3,18 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
-    container_name: archfirm-db
+    container_name: officemanager-db
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password123
-      POSTGRES_DB: archfirm
+      POSTGRES_DB: officemanager
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d archfirm"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d officemanager"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -23,22 +23,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: archfirm-app
+    container_name: officemanager-app
     restart: always
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "3007:3007"
     environment:
       # Will pull standard environment variables mapping
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:password123@db:5432/archfirm?schema=public
+      - DATABASE_URL=postgresql://postgres:password123@db:5432/officemanager?schema=public
     volumes:
       # Map the environment variables securely
       - ./.env:/app/.env
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3007/api/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3

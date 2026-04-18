@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/audit';
+import { paymentSchema, formatZodError } from '@/lib/validation';
+import { getCurrencySymbol } from '@/lib/formatCurrency';
 
 export async function POST(
   request: Request,
@@ -14,34 +16,34 @@ export async function POST(
     const { id } = await params;
     if (!id) return NextResponse.json({ error: 'Missing project ID' }, { status: 400 });
 
-    const data = await request.json();
-    if (!data.amount) return NextResponse.json({ error: 'Amount is required' }, { status: 400 });
+    const body = await request.json();
+    const result = paymentSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
+    }
+    const data = result.data;
 
-    const payment = await (prisma as any).projectPayment.create({
+    const payment = await prisma.projectPayment.create({
       data: {
         projectId: id,
-        amount: Number(data.amount),
-        datePaid: data.datePaid ? new Date(data.datePaid) : new Date(),
+        amount: data.amount,
+        datePaid: new Date(data.datePaid),
         notes: data.notes || '',
-        createdById: (session as any).userId
+        createdById: session.userId as string
       }
     });
 
-    // Record Audit Log
     await recordAuditLog({
       action: 'PAYMENT_RECORDED',
       entity: 'ProjectPayment',
-      entityId: (payment as any).id,
-      details: `Payment of ₪${payment.amount} recorded for project ID ${id}. Notes: ${payment.notes || 'None'}`,
-      userId: (session as any).userId
+      entityId: payment.id,
+      details: `Payment of ${getCurrencySymbol()}${payment.amount} recorded for project ID ${id}. Notes: ${payment.notes || 'None'}`,
+      userId: session.userId as string
     });
 
     return NextResponse.json(payment, { status: 201 });
-  } catch (error: any) {
-    console.error('Payment API Error:', error.message);
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      details: error.message 
-    }, { status: 500 });
+  } catch (error) {
+    console.error('Payment API Error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

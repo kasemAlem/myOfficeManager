@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { contactSchema, formatZodError } from '@/lib/validation';
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -8,8 +9,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const params = await context.params;
-    const data = await request.json();
-    
+    const body = await request.json();
+    const result = contactSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
+    }
+    const data = result.data;
+
     const contact = await prisma.projectContact.create({
       data: {
         projectId: params.id,

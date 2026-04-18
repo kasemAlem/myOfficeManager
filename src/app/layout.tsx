@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import fs from 'fs';
 import path from 'path';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-heading',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: `${process.env.NEXT_PUBLIC_APP_NAME || 'Platform'} | ${process.env.NEXT_PUBLIC_COMPANY_NAME || 'Management'}`,
@@ -16,7 +21,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let theme = 'system';
+  let theme = 'dark';
   let inputFontColor = '';
   try {
     const configPath = path.join(process.cwd(), 'theme-config.json');
@@ -28,8 +33,8 @@ export default function RootLayout({
   } catch(e) {}
 
   return (
-    <html lang="en" data-theme={theme} suppressHydrationWarning>
-      <body className={inter.className} style={inputFontColor ? { '--custom-input-color': inputFontColor } as any : {}}>
+    <html lang="en" dir="ltr" data-theme={theme} suppressHydrationWarning>
+      <body className={`${inter.variable} ${jakarta.variable}`} style={inputFontColor ? { '--custom-input-color': inputFontColor } as React.CSSProperties : {}}>
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
           {children}
         </div>

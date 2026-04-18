@@ -1,18 +1,28 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { milestoneSchema, formatZodError } from '@/lib/validation';
+import type { Prisma } from '@prisma/client';
 
-export async function POST(request: Request, context: any) {
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const params = await context.params;
-    const data = await request.json();
+    const { id } = await params;
+    const body = await request.json();
+    const result = milestoneSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
+    }
+    const data = result.data;
 
     const milestone = await prisma.projectMilestone.create({
       data: {
-        projectId: params.id,
+        projectId: id,
         name: data.name,
         feeAmount: data.feeAmount ? Number(data.feeAmount) : 0,
         isCompleted: false,
@@ -26,16 +36,15 @@ export async function POST(request: Request, context: any) {
   }
 }
 
-export async function PUT(request: Request, context: any) {
+export async function PUT(request: Request) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const data = await request.json(); // Array of milestones to update
-    
-    // Handle toggle completion or notes update
+    const data = await request.json();
+
     if (data.id) {
-      const updateData: any = {};
+      const updateData: Prisma.ProjectMilestoneUpdateInput = {};
       if (typeof data.isCompleted === 'boolean') updateData.isCompleted = data.isCompleted;
       if (typeof data.notes === 'string') updateData.notes = data.notes;
 

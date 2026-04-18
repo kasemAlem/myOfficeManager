@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/audit';
+import { projectSchema, formatZodError } from '@/lib/validation';
+import { getCurrencySymbol } from '@/lib/formatCurrency';
 
 export async function GET() {
   try {
@@ -28,8 +30,13 @@ export async function POST(request: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const data = await request.json();
-    
+    const body = await request.json();
+    const validation = projectSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodError(validation.error) }, { status: 400 });
+    }
+    const data = validation.data;
+
     // Read dynamic phase config for initial status
     let initialStatus = 'ייזום והגדרת פרויקט';
     try {
@@ -71,8 +78,8 @@ export async function POST(request: Request) {
       action: 'PROJECT_CREATED',
       entity: 'Project',
       entityId: project.id,
-      details: `Project "${project.name}" created with total fees ₪${project.totalFees}`,
-      userId: (session as any).userId
+      details: `Project "${project.name}" created with total fees ${getCurrencySymbol()}${project.totalFees}`,
+      userId: session.userId as string
     });
 
     return NextResponse.json(project, { status: 201 });

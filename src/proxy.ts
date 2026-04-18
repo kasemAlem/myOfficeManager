@@ -20,7 +20,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // RBAC checks for Employees
-  if (session && (session as any).role === 'EMPLOYEE') {
+  if (session && session.role === 'EMPLOYEE') {
     const restrictedRoutes = ['/dashboard/financials', '/dashboard/settings'];
     if (restrictedRoutes.some(route => path.startsWith(route))) {
       // Redirect unauthorized employee to dashboard main

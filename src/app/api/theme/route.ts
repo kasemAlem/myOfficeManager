@@ -8,18 +8,18 @@ const configPath = path.join(process.cwd(), 'theme-config.json');
 
 export async function GET() {
   try {
-    let theme = 'system';
+    let theme = 'dark';
     let showActivityFeed = true;
     let inputFontColor = '';
     if (fs.existsSync(configPath)) {
       const data = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      theme = data.theme || 'system';
+      theme = data.theme || 'dark';
       showActivityFeed = data.showActivityFeed !== undefined ? data.showActivityFeed : true;
       inputFontColor = data.inputFontColor || '';
     }
     return NextResponse.json({ theme, showActivityFeed, inputFontColor });
   } catch (error) {
-    return NextResponse.json({ theme: 'system' });
+    return NextResponse.json({ theme: 'dark' });
   }
 }
 
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     
     const currentConfig = fs.existsSync(configPath) 
       ? JSON.parse(fs.readFileSync(configPath, 'utf8')) 
-      : { theme: 'system', showActivityFeed: true };
+      : { theme: 'dark', showActivityFeed: true };
 
     const newConfig = {
       theme: theme !== undefined ? theme : currentConfig.theme,
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       inputFontColor: inputFontColor !== undefined ? inputFontColor : currentConfig.inputFontColor
     };
 
-    if (newConfig.theme && !['system', 'light', 'dark', 'green'].includes(newConfig.theme)) {
+    if (newConfig.theme && !['dark', 'light'].includes(newConfig.theme)) {
       return NextResponse.json({ error: 'Invalid theme' }, { status: 400 });
     }
 

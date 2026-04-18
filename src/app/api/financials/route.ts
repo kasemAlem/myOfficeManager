@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/audit';
-import { 
-  startOfYear, endOfYear, 
-  startOfMonth, endOfMonth, 
+import { expenseSchema, targetSchema, formatZodError } from '@/lib/validation';
+import { getCurrencySymbol } from '@/lib/formatCurrency';
+import {
+  startOfYear, endOfYear,
+  startOfMonth, endOfMonth,
   startOfQuarter, endOfQuarter,
   eachDayOfInterval, eachMonthOfInterval,
   format, isSameDay, isSameMonth
@@ -51,7 +53,7 @@ export async function GET(request: Request) {
     endDate.setHours(23, 59, 59, 999);
 
     // 1. Fetch Income (Project Payments)
-    const payments = await (prisma as any).projectPayment.findMany({
+    const payments = await prisma.projectPayment.findMany({
       where: { 
         datePaid: { 
           gte: startDate, 
@@ -75,7 +77,7 @@ export async function GET(request: Request) {
     });
 
     // 2. Fetch Business Expenses
-    const expenses = await (prisma as any).businessExpense.findMany({
+    const expenses = await prisma.businessExpense.findMany({
       where: { 
         date: { 
           gte: startDate, 
@@ -90,7 +92,7 @@ export async function GET(request: Request) {
 
     // 3. Fetch Financial Target
     const year = date.getFullYear();
-    const targetObj = await (prisma as any).financialTarget.findUnique({
+    const targetObj = await prisma.financialTarget.findUnique({
       where: { year }
     });
 
@@ -155,11 +157,11 @@ export async function GET(request: Request) {
         }))
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
       chartData,
-      targetValue: (targetObj as any)?.targetAmount || 0
+      targetValue: targetObj?.targetAmount || 0
     });
-  } catch (error: any) {
-    console.error('Financials API GET Error:', error.message, error.stack);
-    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
+  } catch (error) {
+    console.error('Financials API GET Error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -174,19 +176,21 @@ export async function POST(request: Request) {
     const { type } = data;
 
     if (type === 'EXPENSE') {
-      const amount = parseFloat(data.amount);
-      if (isNaN(amount)) {
-        return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+      const result = expenseSchema.safeParse(data);
+      if (!result.success) {
+        return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
       }
+      const validated = result.data;
 
-      const expense = await (prisma as any).businessExpense.create({
+      const expense = await prisma.businessExpense.create({
         data: {
-          category: data.category || 'Other',
-          amount: amount,
-          date: data.date ? new Date(data.date) : new Date(),
-          vendor: data.vendor || '',
-          notes: data.notes || '',
-          createdById: (session as any).userId
+          category: validated.category,
+          amount: validated.amount,
+          date: new Date(validated.date),
+          vendor: validated.vendor || '',
+          notes: validated.notes || '',
+          isPaid: validated.isPaid,
+          createdById: session.userId as string
         }
       });
 
@@ -194,43 +198,42 @@ export async function POST(request: Request) {
       await recordAuditLog({
         action: 'EXPENSE_RECORDED',
         entity: 'BusinessExpense',
-        entityId: (expense as any).id,
-        details: `Expense of ₪${expense.amount} recorded for category "${expense.category}"`,
-        userId: (session as any).userId
+        entityId: expense.id,
+        details: `Expense of ${getCurrencySymbol()}${expense.amount} recorded for category "${expense.category}"`,
+        userId: session.userId as string
       });
 
       return NextResponse.json(expense);
     }
 
     if (type === 'TARGET') {
-      const amount = parseFloat(data.amount);
-      const year = parseInt(data.year);
-      
-      if (isNaN(amount) || isNaN(year)) {
-        return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
+      const result = targetSchema.safeParse(data);
+      if (!result.success) {
+        return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
       }
+      const validated = result.data;
 
-      const target = await (prisma as any).financialTarget.upsert({
-        where: { year: year },
-        update: { targetAmount: amount },
-        create: { year: year, targetAmount: amount }
+      const target = await prisma.financialTarget.upsert({
+        where: { year: validated.year },
+        update: { targetAmount: validated.amount },
+        create: { year: validated.year, targetAmount: validated.amount }
       });
 
       // Record Audit Log
       await recordAuditLog({
         action: 'PROJECT_UPDATED', // Reuse update action for targets
-        entity: 'Project', // Mapping target to project entity for now as a firm-wide project
+        entity: 'Project',
         entityId: target.id,
-        details: `Annual revenue target for ${year} set to ₪${amount}`,
-        userId: (session as any).userId
+        details: `Annual revenue target for ${validated.year} set to ${getCurrencySymbol()}${validated.amount}`,
+        userId: session.userId as string
       });
 
       return NextResponse.json(target);
     }
 
     return NextResponse.json({ error: 'Invalid operation type' }, { status: 400 });
-  } catch (error: any) {
-    console.error('Financials API POST Error:', error.message, error.stack);
-    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
+  } catch (error) {
+    console.error('Financials API POST Error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

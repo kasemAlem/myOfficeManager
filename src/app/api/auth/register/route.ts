@@ -2,16 +2,17 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import { setSession } from '@/lib/auth';
+import { registerSchema, formatZodError } from '@/lib/validation';
 
 export async function POST(request: Request) {
   try {
-    const { email, password, name } = await request.json();
-
-    if (!email || !password || !name) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const body = await request.json();
+    const result = registerSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
     }
+    const { email, password, name } = result.data;
 
-    // Check if any user exists to determine if we should make them an admin
     const count = await prisma.user.count();
     const role = count === 0 ? 'ADMIN' : 'EMPLOYEE';
 

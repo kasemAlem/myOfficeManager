@@ -2,11 +2,16 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import { sendPasswordResetEmail } from '@/lib/mail';
+import { forgotPasswordSchema, formatZodError } from '@/lib/validation';
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json();
-    if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    const body = await request.json();
+    const result = forgotPasswordSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: formatZodError(result.error) }, { status: 400 });
+    }
+    const { email } = result.data;
 
     const user = await prisma.user.findUnique({ where: { email } });
     
@@ -30,7 +35,7 @@ export async function POST(request: Request) {
     });
 
     // Generate reset URL (mocking domain for local dev)
-    const resetUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+    const resetUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3007'}/reset-password?token=${token}`;
 
     // Check if email sending is configured
     const fromEmail = process.env.FROM_EMAIL;

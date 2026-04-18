@@ -1,21 +1,29 @@
-import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { cookies } from 'next/headers';
 
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'YOUR_SUPER_SECRET_JWT_KEY_HERE_FOR_LOCAL_DEV'
-);
+function getSecretKey(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET environment variable is required in production');
+    }
+    console.warn('WARNING: JWT_SECRET not set. Using insecure default for development only.');
+    return new TextEncoder().encode('dev-only-insecure-secret-do-not-use-in-prod');
+  }
+  return new TextEncoder().encode(secret);
+}
 
-export async function signToken(payload: any) {
+export async function signToken(payload: JWTPayload) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('24h')
-    .sign(SECRET_KEY);
+    .sign(getSecretKey());
 }
 
 export async function verifyToken(token: string) {
   try {
-    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const { payload } = await jwtVerify(token, getSecretKey());
     return payload;
   } catch (error) {
     return null;

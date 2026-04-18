@@ -34,7 +34,7 @@ A native `docker-compose.yml` file is provided that securely maps the applicatio
    ```bash
    docker-compose up --build -d
    ```
-3. Your application is now running securely bounded to `localhost:3000`.
+3. Your application is now running securely bounded to `localhost:3007`.
 
 ---
 
