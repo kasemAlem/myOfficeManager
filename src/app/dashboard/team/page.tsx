@@ -306,7 +306,7 @@ const inputStyle = {
   borderRadius: '12px',
   background: 'rgba(255,255,255,0.03)',
   border: '1px solid rgba(255,255,255,0.1)',
-  color: 'white',
+  color: 'var(--custom-input-color, white)',
   width: '100%',
   boxSizing: 'border-box' as const,
   outline: 'none',

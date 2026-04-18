@@ -1,6 +1,6 @@
 # Management OS (White-Label Project Platform)
 
-A fully generic, highly customizable SaaS deployment built on Next.js 16 (App Router), Prisma, and SQLite. Out of the box, this application manages Architecture, Design, Engineering, and Software pipelines through dynamic configuration parameters—without ever touching the underlying source code.
+A fully generic, highly customizable SaaS deployment built on Next.js 16 (App Router), Prisma, and **PostgreSQL**. Out of the box, this application manages Architecture, Design, Engineering, and Software pipelines through dynamic configuration parameters—without ever touching the underlying source code.
 
 This platform comes fully equipped with a secure Authentication layer, Team Timesheets management, Auditing workflows, multi-layer Financial projections, and interactive pipeline boards.
 
@@ -27,7 +27,7 @@ Before deploying anywhere, you must construct an environment mapping for the pla
 
 ## 🐳 2. Deploying Locally via Docker (Container)
 
-A native `docker-compose.yml` file is provided that securely maps the application alongside a persistent SQLite Database layer ensuring data isn't wiped across container restarts.
+A native `docker-compose.yml` file is provided that securely maps the application alongside a persistent **PostgreSQL** Database layer ensuring data isn't wiped across container restarts.
 
 1. Start the Docker daemon and navigate to this directory.
 2. Build and boot the stack:
@@ -42,30 +42,43 @@ A native `docker-compose.yml` file is provided that securely maps the applicatio
 
 If deploying to an Ubuntu/Debian Host (like DigitalOcean, AWS EC2, or Hetzner) directly via Node runtime instead of Docker.
 
-1. Ensure **Node.js (v18+)** and **npm** are installed.
+1. Ensure **Node.js (v20+)** and **npm** are installed.
 2. Clone the repository and navigate inside.
-3. Install strict dependencies and push schema definitions:
+3. Install strict dependencies:
    ```bash
    npm ci
    ```
-4. Build the Next.js Production Engine:
-   ```bash
-   npm run build
-   ```
-5. **Critically Important - Initialize the Database:** Run the database purge command. This wipes historical artifacts entirely and uses your `.env` parameters to deploy the sole Administrative User mentioned above:
+4. **Initialize the Database (First-time only):** 
+   If this is a fresh install, run the database clean and baseline migration command:
    ```bash
    npm run db:clean
    ```
-6. Start the deployment server natively (or via PM2):
-   ```bash
-   npm start
-   ```
-
-**(Optional)** Map NGINX or Apache proxy onto port `3000` to bind your official domain to the live node environment!
 
 ---
 
-## 🛠 Advanced Features
+## 🔄 4. Smooth Upgrades (Automated Pipeline)
 
-- **Themes**: Both Administrators and Managers retain access to the **Themes & Appearance** switch within the Settings Dashboard.
-- **Reporting**: Weekly/Monthly attendance arrays can be fired utilizing standard JSON Node Mailers via the `/api/timesheets/report` boundary.
+Once your application is running, use the automated deployment script for all future updates and database schema changes.
+
+1. **Safe Deployment**: Run a single command to automatically create a database snapshot, pull the latest code, rebuild images, and apply non-destructive database migrations:
+   ```bash
+   npm run deploy
+   ```
+
+2. **Monitoring**: Both the Database and the Application are configured with **Health Checks**. Docker will ensure the database is fully ready before the application attempts to connect.
+
+---
+
+## 🛠 Advanced Features & Recently Added
+
+- **Modern Timesheet UI**:
+    - **Visual Presence**: Filled records are highlighted with an emerald green tint and bold indicators, while empty rows are recessed for ultra-fast scanning.
+    - **Navigation**: Use the "Today" button to instantly jump back to the current month.
+- **Reporting & Exports**:
+    - **Global Export**: All users can export their monthly attendance as a professionally formatted `.xlsx` file.
+    - **Auto-Notifications**: Managers receive automated monthly reports via email upon timesheet finalization.
+- **Enterprise-Grade Backup**:
+    - Automated local script with **Rotate-before-write** safety.
+    - Optional **Google Drive Integration** for cloud snapshots.
+    - See [BACKUP_RESTORE.md](./BACKUP_RESTORE.md) for full setup instructions.
+- **Themes**: Live theme switching (Light/Dark/System/Custom) via the Settings Dashboard.

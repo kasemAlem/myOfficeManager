@@ -5,6 +5,8 @@ import { Settings as SettingsIcon, Plus, Trash2, GitPullRequest } from 'lucide-r
 
 export default function SettingsPage() {
   const [globalTheme, setGlobalTheme] = useState('system');
+  const [showActivityFeed, setShowActivityFeed] = useState(true);
+  const [inputFontColor, setInputFontColor] = useState('');
   const [session, setSession] = useState<any>(null);
   
   const [phases, setPhases] = useState<any[]>([]);
@@ -14,7 +16,11 @@ export default function SettingsPage() {
 
   useEffect(() => { 
     fetch('/api/theme').then(r => r.ok && r.json()).then(data => {
-      if(data) setGlobalTheme(data.theme);
+      if(data) {
+        setGlobalTheme(data.theme);
+        setShowActivityFeed(data.showActivityFeed);
+        setInputFontColor(data.inputFontColor || '');
+      }
     });
     fetch('/api/phases').then(r => r.ok && r.json()).then(data => {
       if(data) setPhases(data.phases);
@@ -34,6 +40,24 @@ export default function SettingsPage() {
       body: JSON.stringify({ theme: themeLabel })
     });
     window.location.reload();
+  };
+
+  const handleUpdateActivityFeed = async (show: boolean) => {
+    setShowActivityFeed(show);
+    await fetch('/api/theme', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ showActivityFeed: show })
+    });
+  };
+
+  const handleUpdateInputColor = async (color: string) => {
+    setInputFontColor(color);
+    await fetch('/api/theme', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputFontColor: color })
+    });
   };
 
   const savePhases = async () => {
@@ -156,6 +180,53 @@ export default function SettingsPage() {
                    </button>
                  ))}
                </div>
+
+               <div style={{ marginTop: '2.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                 <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Dashboard Visibility</h2>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '1rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+                     <input 
+                       type="checkbox" 
+                       checked={showActivityFeed} 
+                       onChange={(e) => handleUpdateActivityFeed(e.target.checked)}
+                       style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                     />
+                     Show Firm Activity Feed on Pipeline Page
+                   </label>
+                 </div>
+                 <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', fontSize: '0.875rem' }}>If disabled, the activity logs section will be hidden from the main dashboard for all Admins/Managers.</p>
+               </div>
+
+               <div style={{ marginTop: '2.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                 <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Input Styling</h2>
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                   <div>
+                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Custom Input Text Color</label>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                       <input 
+                         type="color" 
+                         value={inputFontColor || '#ffffff'} 
+                         onChange={(e) => handleUpdateInputColor(e.target.value)}
+                         style={{ width: '50px', height: '40px', border: '1px solid var(--border-color)', borderRadius: '6px', cursor: 'pointer', background: 'transparent' }}
+                       />
+                       <input 
+                         type="text" 
+                         value={inputFontColor} 
+                         onChange={(e) => handleUpdateInputColor(e.target.value)}
+                         placeholder="e.g. #ffffff or var(--text-primary)"
+                         style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.1)', color: 'var(--text-primary)', width: '200px' }}
+                       />
+                       <button 
+                         onClick={() => handleUpdateInputColor('')}
+                         style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem' }}
+                       >
+                         Reset to Default
+                       </button>
+                     </div>
+                     <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', fontSize: '0.875rem' }}>Sets the font color for all input fields and textareas across the application.</p>
+                   </div>
+                 </div>
+               </div>
              </div>
           )}
 
@@ -183,7 +254,7 @@ export default function SettingsPage() {
                           type="text" 
                           value={phase.name} 
                           onChange={(e) => handleUpdatePhase(pIdx, e.target.value)}
-                          style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 600 }}
+                          style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-surface)', color: 'var(--custom-input-color, var(--text-primary))', fontSize: '1rem', fontWeight: 600 }}
                         />
                         <button onClick={() => handleRemovePhase(pIdx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-danger)', cursor: 'pointer', padding: '0.5rem' }} title="Remove Phase">
                           <Trash2 size={18} />

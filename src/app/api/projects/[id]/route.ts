@@ -11,14 +11,22 @@ export async function GET(request: Request, context: any) {
     const params = await context.params;
     if (!params?.id) return NextResponse.json({ error: 'Missing project ID' }, { status: 400 });
 
+    const includeConfig: any = {
+      milestones: { orderBy: { createdAt: 'asc' } },
+      payments: { orderBy: { datePaid: 'desc' } },
+      documentLinks: true,
+      contacts: { orderBy: { createdAt: 'asc' } },
+    };
+
+    if (session.role === 'ADMIN' || session.role === 'MANAGER') {
+      includeConfig.timeLogs = {
+        include: { employee: { select: { name: true, id: true } } }
+      };
+    }
+
     const project = await prisma.project.findUnique({
       where: { id: params.id },
-      include: {
-        milestones: { orderBy: { createdAt: 'asc' } },
-        payments: { orderBy: { datePaid: 'desc' } },
-        documentLinks: true,
-        contacts: { orderBy: { createdAt: 'asc' } },
-      }
+      include: includeConfig
     });
 
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });

@@ -19,6 +19,7 @@ export default function FinancialsPage() {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [activeTab, setActiveTab] = useState('audit'); // audit, trends
+  const [filterType, setFilterType] = useState<string | null>(null);
 
   // Date selection state
   const now = new Date();
@@ -195,16 +196,20 @@ export default function FinancialsPage() {
         <>
           {/* Metrics Grid */}
           <div className="bento-grid">
-            <div className="glass-panel transition-standard" style={{ 
+            <div className="glass-panel transition-standard" onClick={() => setFilterType(filterType === 'INCOME' ? null : 'INCOME')} style={{ 
               padding: '2rem', 
-              background: 'rgba(52, 211, 153, 0.03)', 
+              background: filterType === 'INCOME' ? 'rgba(52, 211, 153, 0.1)' : 'rgba(52, 211, 153, 0.03)', 
+              borderTopColor: filterType === 'INCOME' ? 'var(--accent-success)' : 'var(--border-color)',
+              borderRightColor: filterType === 'INCOME' ? 'var(--accent-success)' : 'var(--border-color)',
+              borderBottomColor: filterType === 'INCOME' ? 'var(--accent-success)' : 'var(--border-color)',
               borderLeft: '4px solid var(--accent-success)',
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              cursor: 'pointer'
             }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                 <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gross Revenue</span>
+                 <span style={{ color: filterType === 'INCOME' ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gross Revenue</span>
                  <div style={{ background: 'rgba(52, 211, 153, 0.1)', padding: '0.5rem', borderRadius: '8px' }}>
                   <ArrowUpRight size={18} color="var(--accent-success)" />
                  </div>
@@ -212,16 +217,20 @@ export default function FinancialsPage() {
                <p className="architect-heading" style={{ fontSize: '2.5rem', margin: 0, letterSpacing: '-0.02em' }}>₪{summary.income?.toLocaleString()}</p>
             </div>
 
-            <div className="glass-panel transition-standard" style={{ 
+            <div className="glass-panel transition-standard" onClick={() => setFilterType(filterType === 'EXPENSE' ? null : 'EXPENSE')} style={{ 
               padding: '2rem', 
-              background: 'rgba(248, 113, 113, 0.03)', 
+              background: filterType === 'EXPENSE' ? 'rgba(248, 113, 113, 0.1)' : 'rgba(248, 113, 113, 0.03)', 
+              borderTopColor: filterType === 'EXPENSE' ? 'var(--accent-danger)' : 'var(--border-color)',
+              borderRightColor: filterType === 'EXPENSE' ? 'var(--accent-danger)' : 'var(--border-color)',
+              borderBottomColor: filterType === 'EXPENSE' ? 'var(--accent-danger)' : 'var(--border-color)',
               borderLeft: '4px solid var(--accent-danger)',
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              cursor: 'pointer'
             }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                 <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operational Spend</span>
+                 <span style={{ color: filterType === 'EXPENSE' ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operational Spend</span>
                  <div style={{ background: 'rgba(248, 113, 113, 0.1)', padding: '0.5rem', borderRadius: '8px' }}>
                   <ArrowDownRight size={18} color="var(--accent-danger)" />
                  </div>
@@ -282,12 +291,12 @@ export default function FinancialsPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {transactions.length === 0 ? (
+              {(filterType ? transactions.filter((t: any) => t.type === filterType) : transactions).length === 0 ? (
                 <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px dashed var(--border-color)' }}>
-                  No historical entries detected for selected parameters.
+                  No historical {filterType ? filterType.toLowerCase() + ' ' : ''}entries detected for selected parameters.
                 </div>
               ) : (
-                transactions.map((t: any, idx: number) => (
+                (filterType ? transactions.filter((t: any) => t.type === filterType) : transactions).map((t: any, idx: number) => (
                   <div key={idx} className="transition-standard" style={{ 
                     display: 'grid', 
                     gridTemplateColumns: '100px 120px 1fr 120px 160px', 
@@ -445,7 +454,7 @@ export default function FinancialsPage() {
                   value={newTarget.amount} 
                   onChange={e => setNewTarget({...newTarget, amount: e.target.value})} 
                   className="architect-heading"
-                  style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '2rem', width: '100%', outline: 'none', letterSpacing: '-0.02em' }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--custom-input-color, white)', fontSize: '2rem', width: '100%', outline: 'none', letterSpacing: '-0.02em' }}
                 />
               </div>
               <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
@@ -482,7 +491,7 @@ const inputStyle = {
   borderRadius: '12px',
   background: 'rgba(255,255,255,0.03)',
   border: '1px solid rgba(255,255,255,0.1)',
-  color: 'white',
+  color: 'var(--custom-input-color, white)',
   width: '100%',
   boxSizing: 'border-box' as const,
   outline: 'none',

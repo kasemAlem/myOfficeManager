@@ -12,6 +12,7 @@ export async function GET() {
       include: {
         milestones: true,
         payments: true,
+        contacts: true,
       },
       orderBy: { updatedAt: 'desc' }
     });
@@ -45,7 +46,9 @@ export async function POST(request: Request) {
     const project = await prisma.project.create({
       data: {
         name: data.name,
-        clientName: data.name, // project name IS the client name
+        clientName: data.contact?.name || data.name,
+        clientPhone: data.contact?.phone || null,
+        clientEmail: data.contact?.email || null,
         totalFees: Number(data.totalFees),
         budget: Number(data.totalFees),
         status: initialStatus,

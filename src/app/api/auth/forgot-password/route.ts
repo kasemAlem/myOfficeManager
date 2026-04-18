@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
+import { sendPasswordResetEmail } from '@/lib/mail';
 
 export async function POST(request: Request) {
   try {
@@ -29,15 +30,28 @@ export async function POST(request: Request) {
     });
 
     // Generate reset URL (mocking domain for local dev)
-    const resetUrl = `http://localhost:3000/reset-password?token=${token}`;
+    const resetUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
 
-    // IMPORTANT: Since we don't have SMTP set up, we print this secure link to the console.
-    // In production, this would use a mailer like Resend or AWS SES.
-    console.log('\n=========================================');
-    console.log('🔒 PASSWORD RESET REQUESTED 🔒');
-    console.log(`For User: ${user.email}`);
-    console.log(`Click link to reset: ${resetUrl}`);
-    console.log('=========================================\n');
+    // Check if email sending is configured
+    const fromEmail = process.env.FROM_EMAIL;
+    if (fromEmail) {
+      try {
+        await sendPasswordResetEmail(user.email, resetUrl);
+        console.log(`📧 Reset email sent to ${user.email}`);
+      } catch (err) {
+        console.error('Failed to send reset email:', err);
+        // Fallback to console during development if email fails
+        console.log(`\nFallback Reset Link (Email Failed): ${resetUrl}\n`);
+      }
+    } else {
+      // IMPORTANT: Since we don't have SMTP set up, we print this secure link to the console.
+      // In production, this would use a mailer like Resend or AWS SES.
+      console.log('\n=========================================');
+      console.log('🔒 PASSWORD RESET REQUESTED 🔒');
+      console.log(`For User: ${user.email}`);
+      console.log(`Click link to reset: ${resetUrl}`);
+      console.log('=========================================\n');
+    }
 
     return NextResponse.json({ message: 'If an account exists, a password reset link has been generated.' });
   } catch (error) {

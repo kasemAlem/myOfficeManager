@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, ExternalLink, Archive, Activity, Circle, CheckCircle2, DollarSign, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, ExternalLink, Archive, Activity, Circle, CheckCircle2, DollarSign, Trash2, AlertCircle, Search } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -14,6 +14,8 @@ export default function DashboardPage() {
   const [hoveredPhase, setHoveredPhase] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [showActivityFeed, setShowActivityFeed] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchBoard = () => {
     Promise.all([
@@ -31,6 +33,9 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchBoard();
     fetch('/api/auth/me').then(res => res.json()).then(data => setUser(data));
+    fetch('/api/theme').then(res => res.json()).then(data => {
+      if (data && data.showActivityFeed !== undefined) setShowActivityFeed(data.showActivityFeed);
+    });
   }, []);
 
   const handleUpdateStatus = async (projectId: string, newStatus: string) => {
@@ -61,13 +66,29 @@ export default function DashboardPage() {
     }
   };
 
-  // Archive Filter
+  // Archive & Search Filter
   const activeProjects = projects.filter(p => {
     const totalPaid = p.payments?.reduce((sum: number, pay: any) => sum + pay.amount, 0) || 0;
     const balanceDue = p.totalFees - totalPaid;
     const lastPhaseName = phases.length > 0 ? phases[phases.length - 1].name : null;
     const isArchived = balanceDue <= 0 && p.status === lastPhaseName;
-    return !isArchived;
+    
+    if (isArchived) return false;
+
+    if (searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase();
+      const matchName = p.name?.toLowerCase().includes(term);
+      const matchClientName = p.clientName?.toLowerCase().includes(term);
+      const matchClientPhone = p.clientPhone?.toLowerCase().includes(term);
+      
+      const matchContacts = p.contacts && p.contacts.some((c: any) => 
+        c.name?.toLowerCase().includes(term) || c.phone?.toLowerCase().includes(term)
+      );
+
+      if (!matchName && !matchClientName && !matchClientPhone && !matchContacts) return false;
+    }
+
+    return true;
   });
 
   if (loading) return <div style={{ padding: '2rem' }}>Loading workspace...</div>;
@@ -80,6 +101,24 @@ export default function DashboardPage() {
           <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', fontSize: '1rem' }}>Elite lifecycle management for architectural projects.</p>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={16} style={{ position: 'absolute', left: '1rem', color: 'var(--text-muted)' }} />
+            <input 
+              placeholder="Search by phone, name..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="transition-standard"
+              style={{
+                padding: '0.85rem 1rem 0.85rem 2.75rem',
+                background: 'rgba(255, 255, 255, 0.03)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '12px',
+                fontSize: '0.9rem',
+                minWidth: '260px'
+              }}
+            />
+          </div>
           <Link href="/dashboard/archive" className="transition-standard" style={{
             display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.75rem',
             background: 'rgba(255, 255, 255, 0.03)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '12px', fontWeight: 600, fontSize: '0.9rem'
@@ -98,169 +137,103 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '2rem', overflowX: 'auto', paddingBottom: '2rem', flex: 1, alignItems: 'flex-start', scrollSnapType: 'x mandatory' }}>
-        {phases.map((phaseObj) => {
-          const phase = phaseObj.name;
-          const validPhaseNames = phases.map(p => p.name);
-          const phaseProjects = activeProjects.filter(p => p.status === phase || (!validPhaseNames.includes(p.status) && phase === validPhaseNames[0]));
-          
-          return (
-            <div 
-              key={phase} 
-              className="glass-panel"
-              style={{ 
-                flex: '0 0 350px', 
-                minWidth: '350px', 
-                background: 'rgba(255, 255, 255, 0.02)', 
-                padding: '1.5rem', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                maxHeight: '100%',
-                scrollSnapAlign: 'start'
-              }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                const projectId = e.dataTransfer.getData('projectId');
-                if (projectId) handleUpdateStatus(projectId, phase);
-              }}
-            >
-              <div 
-                dir="rtl" 
-                onMouseEnter={() => setHoveredPhase(phase)}
-                onMouseLeave={() => setHoveredPhase(null)}
-                style={{ 
-                  position: 'relative',
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '0.5rem',
-                  marginBottom: '1.25rem', 
-                  borderBottom: '2px solid rgba(255,255,255,0.08)', 
-                  paddingBottom: '0.75rem',
-                  cursor: 'help'
-                }}
-              >
-                <h3 style={{ fontSize: '1rem', margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {phase}
-                </h3>
-                <span style={{ 
-                  background: 'var(--accent-primary)', 
-                  color: 'white', 
-                  fontSize: '0.75rem', 
-                  fontWeight: 700, 
-                  padding: '0.15rem 0.6rem', 
-                  borderRadius: '12px',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  {phaseProjects.length}
-                </span>
+      <div className="glass-panel transition-standard" style={{ flex: 1, padding: '2rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        
+        {/* Table Header */}
+        <div style={{ display: 'grid', gridTemplateColumns: user?.role === 'EMPLOYEE' ? 'minmax(200px, 2fr) 1.5fr 1.5fr 150px 50px' : 'minmax(200px, 1.5fr) 1fr 1fr 1.25fr 1fr 1fr 150px 50px', gap: '1rem', padding: '0 1rem 1rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '1rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+          <div>Project Name</div>
+          <div>Client</div>
+          {user?.role !== 'EMPLOYEE' && <div>Total Fee</div>}
+          <div>Progress</div>
+          {user?.role !== 'EMPLOYEE' && <div>Billed</div>}
+          {user?.role !== 'EMPLOYEE' && <div>Balance Due</div>}
+          <div style={{ textAlign: 'right', paddingRight: '0.5rem' }}>Status</div>
+          <div></div>
+        </div>
 
-                {hoveredPhase === phase && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    marginTop: '0.5rem',
-                    width: '280px',
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '8px',
-                    padding: '1.25rem',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.8)',
-                    zIndex: 100,
-                    textAlign: 'right'
-                  }}>
-                    <ul style={{ margin: 0, paddingLeft: 0, paddingRight: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {phaseObj.description.map((desc: string, idx: number) => (
-                        <li key={idx}>{desc}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              
-              <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', paddingRight: '0.5rem' }}>
-                {phaseProjects.map(project => (
-                  <div 
-                    key={project.id} 
-                    draggable
-                    onDragStart={(e) => e.dataTransfer.setData('projectId', project.id)}
-                    className="transition-standard"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)', 
-                      padding: '1.5rem', 
-                      borderRadius: '16px', 
-                      cursor: 'grab',
-                      border: '1px solid rgba(255, 255, 255, 0.08)', 
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'translateY(-4px)';
-                      e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
-                      e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-                      e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.2)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                      <h4 style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>{project.name}</h4>
-                      <Link href={`/dashboard/projects/${project.id}`} style={{ color: 'var(--text-muted)' }}>
-                        <ExternalLink size={18} />
-                      </Link>
-                    </div>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 1.25rem 0', fontWeight: 500, opacity: 0.8 }}>{project.clientName}</p>
-                    
-                    {/* Milestone Progress Bar */}
-                    {project.milestones && project.milestones.length > 0 && (
-                      <div style={{ marginBottom: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-                          <span>Phase Progress</span>
-                          <span style={{ color: 'var(--accent-primary)' }}>{Math.round((project.milestones.filter((m: any) => m.isCompleted).length / project.milestones.length) * 100)}%</span>
-                        </div>
-                        <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', overflow: 'hidden' }}>
-                          <div style={{ 
-                            height: '100%', 
-                            width: `${(project.milestones.filter((m: any) => m.isCompleted).length / project.milestones.length) * 100}%`, 
-                            background: 'linear-gradient(90deg, var(--accent-primary) 0%, #34d399 100%)', 
-                            borderRadius: '6px',
-                            transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
-                          }} />
-                        </div>
-                      </div>
-                    )}
+        {/* Table Rows */}
+        <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.5rem' }}>
+          {activeProjects.map(project => {
+            const totalPaid = project.payments?.reduce((sum: number, pay: any) => sum + pay.amount, 0) || 0;
+            const balanceDue = (project.totalFees || 0) - totalPaid;
+            const progress = project.milestones && project.milestones.length > 0 
+              ? Math.round((project.milestones.filter((m: any) => m.isCompleted).length / project.milestones.length) * 100)
+              : 0;
+            
+            const projectColors = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316', '#ef4444'];
+            let hash = 0;
+            const str = project.id + project.name;
+            for (let i = 0; i < str.length; i++) {
+              hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const uniqueColor = projectColors[Math.abs(hash) % projectColors.length];
 
-                    <div style={{ display: 'flex', justifyContent: user?.role === 'EMPLOYEE' ? 'flex-end' : 'space-between', alignItems: 'center' }}>
-                      {user?.role !== 'EMPLOYEE' && (
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '0.2rem' }}>Balance Due</span>
-                          <span style={{ color: 'var(--accent-success)', fontWeight: 800, fontSize: '1rem' }}>
-                            ₪{( (project.totalFees || 0) - (project.payments?.reduce((sum: number, p: any) => sum + p.amount, 0) || 0) ).toLocaleString()}
-                          </span>
-                        </div>
-                      )}
-                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700 }}>
-                        {project.clientName?.split(' ').map((n: string) => n[0]).join('')}
-                      </div>
-                    </div>
+            let statusColor = '#3b82f6'; 
+            let statusBg = 'rgba(59, 130, 246, 0.15)';
+            if (['completed', 'מסירה', 'done'].includes(project.status.toLowerCase())) {
+              statusColor = '#10b981';
+              statusBg = 'rgba(16, 185, 129, 0.15)';
+            } else if (['delayed', 'paused', 'on hold'].includes(project.status.toLowerCase())) {
+              statusColor = '#ef4444';
+              statusBg = 'rgba(239, 68, 68, 0.15)';
+            } else if (['planning', 'ייזום', 'review'].some(t => project.status.toLowerCase().includes(t))) {
+              statusColor = '#f59e0b';
+              statusBg = 'rgba(245, 158, 11, 0.15)';
+            }
+
+            return (
+              <div key={project.id} className="transition-standard" style={{
+                display: 'grid', gridTemplateColumns: user?.role === 'EMPLOYEE' ? 'minmax(200px, 2fr) 1.5fr 1.5fr 150px 50px' : 'minmax(200px, 1.5fr) 1fr 1fr 1.25fr 1fr 1fr 150px 50px', gap: '1rem',
+                alignItems: 'center', padding: '1.2rem 1.5rem', background: 'var(--bg-surface)',
+                borderRadius: '12px', border: '1px solid var(--border-color)', borderLeft: `6px solid ${uniqueColor}`, cursor: 'pointer', marginBottom: '0.2rem'
+              }} onMouseEnter={e => {
+                e.currentTarget.style.background = 'var(--bg-surface-hover)';
+              }} onMouseLeave={e => {
+                e.currentTarget.style.background = 'var(--bg-surface)';
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.05rem', letterSpacing: '-0.01em' }}>{project.name}</span>
+                </div>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{project.clientName}</div>
+                
+                {user?.role !== 'EMPLOYEE' && <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>₪{(project.totalFees || 0).toLocaleString()}</div>}
+                
+                <div style={{ display: 'flex', flexDirection: 'column', width: '85%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)' }}>PROGRESS</span>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: statusColor }}>{progress}%</span>
                   </div>
-                ))}
+                  <div style={{ height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg, ${statusColor} 0%, #34d399 100%)`, borderRadius: '4px', transition: 'width 0.8s' }} />
+                  </div>
+                </div>
+
+                {user?.role !== 'EMPLOYEE' && <div style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>₪{totalPaid.toLocaleString()}</div>}
+                {user?.role !== 'EMPLOYEE' && <div style={{ fontWeight: 800, color: 'var(--accent-success)' }}>₪{balanceDue.toLocaleString()}</div>}
+                
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                  <span style={{ padding: '0.4rem 0.85rem', background: statusBg, color: statusColor, borderRadius: '8px', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                    {project.status.length > 20 ? project.status.substring(0,20)+'...' : project.status}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Link href={`/dashboard/projects/${project.id}`} className="transition-standard" style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '8px' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+                    <ExternalLink size={18} />
+                  </Link>
+                </div>
               </div>
+            );
+          })}
+          {activeProjects.length === 0 && (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '1rem' }}>
+              No projects match your criteria.
             </div>
-          );
-        })}
+          )}
+        </div>
       </div>
       
       {/* Firm Activity Feed */}
-      {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && auditLogs.length > 0 && (
+      {showActivityFeed && (user?.role === 'ADMIN' || user?.role === 'MANAGER') && auditLogs.length > 0 && (
         <div className="glass-panel" style={{ padding: '2rem', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
             <Activity size={20} className="text-gradient" />
@@ -335,14 +308,14 @@ export default function DashboardPage() {
                   placeholder="Project Name *" 
                   value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})}
                   className="transition-standard"
-                  style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', width: '100%', fontSize: '1rem' }} 
+                  style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--custom-input-color, var(--text-primary))', width: '100%', fontSize: '1rem' }} 
                 />
                 <input 
                   type="number"
                   placeholder="Total Contract Fee (₪) *" 
                   value={newProject.totalFees || ''} onChange={e => setNewProject({...newProject, totalFees: Number(e.target.value)})}
                   className="transition-standard"
-                  style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', width: '100%', fontSize: '1rem' }} 
+                  style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--custom-input-color, var(--text-primary))', width: '100%', fontSize: '1rem' }} 
                 />
               </div>
 
@@ -354,13 +327,13 @@ export default function DashboardPage() {
                       placeholder="Full Name" 
                       value={newContact.name} onChange={e => setNewContact({...newContact, name: e.target.value})}
                       className="transition-standard"
-                      style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '0.9rem' }} 
+                      style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--custom-input-color, var(--text-primary))', fontSize: '0.9rem' }} 
                     />
                     <input 
                       placeholder="Organization Title" 
                       value={newContact.title} onChange={e => setNewContact({...newContact, title: e.target.value})}
                       className="transition-standard"
-                      style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '0.9rem' }} 
+                      style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--custom-input-color, var(--text-primary))', fontSize: '0.9rem' }} 
                     />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
@@ -369,13 +342,13 @@ export default function DashboardPage() {
                       placeholder="Email Address" 
                       value={newContact.email} onChange={e => setNewContact({...newContact, email: e.target.value})}
                       className="transition-standard"
-                      style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '0.9rem' }} 
+                      style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--custom-input-color, var(--text-primary))', fontSize: '0.9rem' }} 
                     />
                     <input 
                       placeholder="Phone Number" 
                       value={newContact.phone} onChange={e => setNewContact({...newContact, phone: e.target.value})}
                       className="transition-standard"
-                      style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '0.9rem' }} 
+                      style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--custom-input-color, var(--text-primary))', fontSize: '0.9rem' }} 
                     />
                   </div>
                 </div>

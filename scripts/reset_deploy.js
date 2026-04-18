@@ -6,8 +6,8 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🧹 Purging existing database tables...');
   
-  // Truncate all tables (SQLite safe approach)
-  const tablenames = await prisma.$queryRaw`SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_prisma_migrations';`;
+  // Get tables (PostgreSQL safe approach)
+  const tablenames = await prisma.$queryRaw`SELECT tablename as name FROM pg_tables WHERE schemaname='public' AND tablename != '_prisma_migrations';`;
   
   for (const { name } of tablenames) {
     if (name !== '_prisma_migrations') {

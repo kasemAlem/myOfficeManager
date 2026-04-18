@@ -11,6 +11,12 @@ export async function GET(request: Request) {
     const month = parseInt(searchParams.get('month') || '');
     const year = parseInt(searchParams.get('year') || '');
 
+    const requestedUserId = searchParams.get('userId');
+    let targetUserId = (session as any).userId;
+    if (((session as any).role === 'ADMIN' || (session as any).role === 'MANAGER') && requestedUserId) {
+      targetUserId = requestedUserId;
+    }
+
     if (isNaN(month) || isNaN(year)) {
       return NextResponse.json({ error: 'Invalid month or year' }, { status: 400 });
     }
@@ -18,7 +24,7 @@ export async function GET(request: Request) {
     const submission = await prisma.timesheetSubmission.findUnique({
       where: {
         userId_month_year: {
-          userId: (session as any).userId,
+          userId: targetUserId,
           month,
           year
         }
@@ -59,6 +65,10 @@ export async function POST(request: Request) {
           gte: new Date(year, month - 1, 1),
           lte: new Date(year, month - 1, lastDayOfMonth, 23, 59, 59)
         }
+      },
+      include: {
+        project: { select: { name: true } },
+        employee: { select: { name: true, email: true } }
       }
     });
 
@@ -85,9 +95,65 @@ export async function POST(request: Request) {
       }
     });
 
-    // TRIGGER EMAIL TO MANAGER (Optional but recommended here)
-    // We already have report logic, we can trigger it or let the frontend do it.
-    // For now, returning the submission.
+    try {
+      const employeeName = logs[0]?.employee?.name || 'Unknown Employee';
+      const employeeEmail = logs[0]?.employee?.email || 'unknown@example.com';
+
+      // Format Data for Excel
+      const excelData = logs.map(log => ({
+        'Date': new Date(log.dateLogged).toLocaleDateString(),
+        'Category': log.category,
+        'Project': log.project?.name || 'N/A',
+        'Hours': Number(log.hours) || 0,
+        'Notes': log.notes || ''
+      }));
+
+      // Create Workbook
+      const XLSX = require('xlsx');
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance Report');
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+      // Send Email to Managers and Admins
+      const managers = await prisma.user.findMany({
+        where: { role: { in: ['MANAGER', 'ADMIN'] } },
+        select: { email: true }
+      });
+      
+      const managerEmails = managers.map(m => m.email);
+      if (managerEmails.length > 0) {
+          const nodemailer = require('nodemailer');
+          const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_PORT === '465',
+            auth: {
+              user: process.env.SMTP_USER,
+              pass: process.env.SMTP_PASS
+            }
+          });
+          const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || 'Control System';
+          const fromEmail = process.env.FROM_EMAIL || process.env.SMTP_USER || 'noreply@domain.com';
+          const monthName = new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'long' });
+          
+          await transporter.sendMail({
+            from: `"${companyName}" <${fromEmail}>`,
+            to: managerEmails.join(', '),
+            subject: `Attendance Submitted: ${employeeName} - ${monthName} ${year}`,
+            text: `Hello,\n\nEmployee ${employeeName} (${employeeEmail}) has finalized their monthly attendance report for ${monthName} ${year}.\n\nPlease find the detailed daily breakdown attached below as a spreadsheet.`,
+            attachments: [
+              {
+                filename: `Attendance_${employeeName.replace(/\s+/g, '_')}_${monthName}_${year}.xlsx`,
+                content: buffer
+              }
+            ]
+          });
+      }
+    } catch (emailError: any) {
+      console.error('Email Dispatch Error:', emailError.message);
+      // Failsafe: Continue securely instead of rejecting the database submission
+    }
 
     return NextResponse.json(submission, { status: 201 });
   } catch (error: any) {

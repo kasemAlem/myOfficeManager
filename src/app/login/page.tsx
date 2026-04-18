@@ -63,7 +63,8 @@ export default function LoginPage() {
               required
               style={{
                 width: '100%', padding: '0.75rem', borderRadius: '8px', 
-                background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', outline: 'none'
+                background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', outline: 'none',
+                color: 'var(--custom-input-color, var(--text-primary))'
               }}
             />
           </div>
@@ -77,7 +78,8 @@ export default function LoginPage() {
               required
               style={{
                 width: '100%', padding: '0.75rem', borderRadius: '8px', 
-                background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', outline: 'none'
+                background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', outline: 'none',
+                color: 'var(--custom-input-color, var(--text-primary))'
               }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -92,7 +94,7 @@ export default function LoginPage() {
             disabled={loading}
             style={{
               width: '100%', padding: '0.75rem', borderRadius: '8px', fontWeight: 500,
-              background: 'var(--accent-primary)', color: 'white', border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
+              background: 'var(--accent-primary)', color: '#ffffff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
               marginTop: '0.5rem'
             }}
           >

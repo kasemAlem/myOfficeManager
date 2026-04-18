@@ -17,17 +17,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   let theme = 'system';
+  let inputFontColor = '';
   try {
     const configPath = path.join(process.cwd(), 'theme-config.json');
     if (fs.existsSync(configPath)) {
       const data = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       if (data.theme) theme = data.theme;
+      if (data.inputFontColor) inputFontColor = data.inputFontColor;
     }
   } catch(e) {}
 
   return (
     <html lang="en" data-theme={theme} suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={inter.className} style={inputFontColor ? { '--custom-input-color': inputFontColor } as any : {}}>
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
           {children}
         </div>
