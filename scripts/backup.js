@@ -145,10 +145,18 @@ async function performBackup() {
   console.log(`Step 2/4: Running pg_dump → ${path.basename(backupFile)} ...`);
 
   try {
-    execSync(`pg_dump "${DATABASE_URL}" | gzip > "${backupFile}"`, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 120000, // 2 min timeout
-    });
+    try {
+      execSync(`pg_dump "${DATABASE_URL}" | gzip > "${backupFile}"`, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 120000, // 2 min timeout
+      });
+    } catch (hostErr) {
+      console.log('ℹ️   Host pg_dump failed or not found. Trying via Docker container (officemanager-db)...');
+      execSync(`docker exec officemanager-db pg_dump -U postgres officemanager | gzip > "${backupFile}"`, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 120000,
+      });
+    }
 
     const stats = fs.statSync(backupFile);
     const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
