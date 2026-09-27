@@ -12,6 +12,13 @@
 
 set -e
 
+# Support WSL environments where Docker Desktop is on the Windows host
+if ! command -v docker &> /dev/null && command -v docker.exe &> /dev/null; then
+    docker() {
+        docker.exe "$@"
+    }
+fi
+
 # Configuration
 APP_CONTAINER_NAME="officemanager-app"
 HEALTH_CHECK_URL="http://localhost:3007/api/health"
