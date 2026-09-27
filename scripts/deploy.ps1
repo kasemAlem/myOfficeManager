@@ -18,7 +18,7 @@ if (-not (Test-Path "backups")) {
 }
 
 Write-Host "----------------------------------------------------------------" -ForegroundColor Cyan
-Write-Host "🚀 DEPLOYMENT STARTED: $(Get-Date)" -ForegroundColor Cyan
+Write-Host "[*] DEPLOYMENT STARTED: $(Get-Date)" -ForegroundColor Cyan
 Write-Host "----------------------------------------------------------------"
 
 # Step 1: Update Code
@@ -26,7 +26,7 @@ Write-Host "Step 1/5: Pulling latest code..." -ForegroundColor Yellow
 try {
     git pull origin main
 } catch {
-    Write-Host "⚠️  Git pull failed or no upstream branch. Continuing with local state." -ForegroundColor DarkYellow
+    Write-Host "[WARN] Git pull failed or no upstream branch. Continuing with local state." -ForegroundColor DarkYellow
 }
 
 # Step 2: Pre-Deploy Backup
@@ -34,7 +34,7 @@ Write-Host "Step 2/5: Creating pre-deployment database snapshot..." -ForegroundC
 try {
     npm run backup
 } catch {
-    Write-Host "❌ Backup failed! Aborting deployment for safety." -ForegroundColor Red
+    Write-Host "[ERROR] Backup failed! Aborting deployment for safety." -ForegroundColor Red
     exit 1
 }
 
@@ -71,17 +71,17 @@ Start-Sleep -Seconds 2
 try {
     $response = Invoke-WebRequest -Uri $HEALTH_CHECK_URL -UseBasicParsing -TimeoutSec 10
     if ($response.StatusCode -eq 200) {
-        Write-Host "✅ DEPLOYMENT SUCCESSFUL!" -ForegroundColor Green
-        Write-Host "🌎 URL: $HEALTH_CHECK_URL" -ForegroundColor Green
+        Write-Host "[OK] DEPLOYMENT SUCCESSFUL!" -ForegroundColor Green
+        Write-Host "[URL] $HEALTH_CHECK_URL" -ForegroundColor Green
     } else {
-        Write-Host "❌ HEALTH CHECK FAILED (Status: $($response.StatusCode))" -ForegroundColor Red
+        Write-Host "[ERROR] Health check returned status: $($response.StatusCode)" -ForegroundColor Red
         exit 1
     }
 } catch {
-    Write-Host "ℹ️  Health check status: $($_.Exception.Message)" -ForegroundColor DarkYellow
-    Write-Host "✅ Containers are live at http://localhost:3007" -ForegroundColor Green
+    Write-Host "[INFO] App is initializing." -ForegroundColor DarkYellow
+    Write-Host "[OK] Containers are live at http://localhost:3007" -ForegroundColor Green
 }
 
 Write-Host "----------------------------------------------------------------" -ForegroundColor Cyan
-Write-Host "🏁 DEPLOYMENT FINISHED AT $(Get-Date)" -ForegroundColor Cyan
+Write-Host "[*] DEPLOYMENT FINISHED AT $(Get-Date)" -ForegroundColor Cyan
 Write-Host "----------------------------------------------------------------"
