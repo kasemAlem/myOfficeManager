@@ -14,9 +14,10 @@
  *   node scripts/backup.js --schedule   # Run on cron schedule
  */
 
-const { execSync } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 // ── Load env ──────────────────────────────────────────────────────────
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
@@ -144,18 +145,36 @@ async function performBackup() {
   const backupFile = path.join(BACKUP_DIR, `backup_${timestamp()}.sql.gz`);
   console.log(`Step 2/4: Running pg_dump → ${path.basename(backupFile)} ...`);
 
+function streamDumpToFile(cmd, args, destFile) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stderr = '';
+    child.stderr.on('data', d => { stderr += d.toString(); });
+
+    const out = fs.createWriteStream(destFile);
+    const gzip = zlib.createGzip();
+
+    child.stdout.pipe(gzip).pipe(out);
+
+    child.on('error', err => reject(err));
+    out.on('finish', () => resolve());
+    out.on('error', err => reject(err));
+    child.on('close', code => {
+      if (code !== 0) {
+        reject(new Error(stderr || `Process exited with code ${code}`));
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
   try {
     try {
-      execSync(`pg_dump "${DATABASE_URL}" | gzip > "${backupFile}"`, {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: 120000, // 2 min timeout
-      });
+      await streamDumpToFile('pg_dump', [DATABASE_URL], backupFile);
     } catch (hostErr) {
       console.log('ℹ️   Host pg_dump failed or not found. Trying via Docker container (officemanager-db)...');
-      execSync(`docker exec officemanager-db pg_dump -U postgres officemanager | gzip > "${backupFile}"`, {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: 120000,
-      });
+      await streamDumpToFile('docker', ['exec', 'officemanager-db', 'pg_dump', '-U', 'postgres', 'officemanager'], backupFile);
     }
 
     const stats = fs.statSync(backupFile);

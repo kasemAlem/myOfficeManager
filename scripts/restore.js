@@ -13,10 +13,11 @@
  * ⚠️  WARNING: This DROPS all existing data and replaces it with the backup.
  */
 
-const { execSync } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const zlib = require('zlib');
 
 // ── Load env ──────────────────────────────────────────────────────────
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
@@ -127,12 +128,39 @@ async function performRestore(targetFile) {
 
   console.log('\n🔧  Restoring database...');
 
-  try {
-    // Drop and recreate via psql to handle the plain SQL dump
-    execSync(`gunzip -c "${backupPath}" | psql "${DATABASE_URL}"`, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 300000, // 5 min timeout
+function streamRestoreFromFile(srcFile) {
+  const tryPsql = (cmd, args) => {
+    return new Promise((resolve, reject) => {
+      const child = spawn(cmd, args, { stdio: ['pipe', 'inherit', 'pipe'] });
+      let stderr = '';
+      child.stderr.on('data', d => { stderr += d.toString(); });
+
+      const inStream = fs.createReadStream(srcFile);
+      const gunzip = zlib.createGunzip();
+
+      inStream.pipe(gunzip).pipe(child.stdin);
+
+      child.on('error', err => reject(err));
+      inStream.on('error', err => reject(err));
+      gunzip.on('error', err => reject(err));
+      child.on('close', code => {
+        if (code !== 0) {
+          reject(new Error(stderr || `Process exited with code ${code}`));
+        } else {
+          resolve();
+        }
+      });
     });
+  };
+
+  return tryPsql('psql', [DATABASE_URL]).catch(() => {
+    console.log('ℹ️   Host psql failed or not found. Trying via Docker container (officemanager-db)...');
+    return tryPsql('docker', ['exec', '-i', 'officemanager-db', 'psql', '-U', 'postgres', 'officemanager']);
+  });
+}
+
+  try {
+    await streamRestoreFromFile(backupPath);
 
     console.log('✅  Database restored successfully!');
     console.log(`📦  From: ${path.basename(backupPath)}\n`);
@@ -140,7 +168,7 @@ async function performRestore(targetFile) {
     console.error('❌  Restore failed:', err.message);
     console.error('\nTroubleshooting:');
     console.error('  1. Make sure PostgreSQL is running and DATABASE_URL is correct.');
-    console.error('  2. Make sure pg_dump/psql are installed (postgresql-client).');
+    console.error('  2. Make sure pg_dump/psql are installed (or docker officemanager-db is running).');
     console.error('  3. Check that the backup file is not corrupted.\n');
     process.exit(1);
   }

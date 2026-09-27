@@ -25,17 +25,17 @@ echo "----------------------------------------------------------------"
 echo "🚀 DEPLOYMENT STARTED: $(date)"
 echo "----------------------------------------------------------------"
 
-# Step 1: Pre-Deploy Backup
-echo "Step 1/5: Creating pre-deployment database snapshot..."
-npm run backup || { echo "❌ Backup failed! Aborting deployment for safety."; exit 1; }
-
-# Step 2: Update Code
-echo "Step 2/5: Pulling latest code..."
+# Step 1: Update Code
+echo "Step 1/5: Pulling latest code..."
 if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
     git pull origin main || echo "⚠️  Git pull failed or no upstream branch. Continuing with local state."
 else
     echo "ℹ️  Not a git repository. Skipping code pull."
 fi
+
+# Step 2: Pre-Deploy Backup
+echo "Step 2/5: Creating pre-deployment database snapshot..."
+npm run backup || { echo "❌ Backup failed! Aborting deployment for safety."; exit 1; }
 
 # Step 3: Container Orchestration
 echo "Step 3/5: Rebuilding and restarting containers..."
