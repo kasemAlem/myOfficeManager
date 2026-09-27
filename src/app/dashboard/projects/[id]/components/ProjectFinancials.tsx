@@ -100,8 +100,12 @@ export function ProjectFinancials() {
         <form onSubmit={handleRecordPayment} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <input type="number" required placeholder={`Amount (${currency})`} aria-label="Payment amount" value={newPayment.amount}
             onChange={e => setNewPayment({ ...newPayment, amount: e.target.value })} style={inputStyle} />
-          <input placeholder="Notes (e.g. Check #123)" aria-label="Payment notes" value={newPayment.notes}
-            onChange={e => setNewPayment({ ...newPayment, notes: e.target.value })} style={inputStyle} />
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <input placeholder="Notes (e.g. Check #123)" aria-label="Payment notes" value={newPayment.notes}
+              onChange={e => setNewPayment({ ...newPayment, notes: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
+            <input type="date" required aria-label="Payment date" value={newPayment.datePaid}
+              onChange={e => setNewPayment({ ...newPayment, datePaid: e.target.value })} style={{ ...inputStyle, width: 'auto', minWidth: '150px', flex: '0 0 auto' }} />
+          </div>
           <button style={{ padding: '0.75rem', background: 'var(--accent-success)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Log Payment</button>
         </form>
       </Card>

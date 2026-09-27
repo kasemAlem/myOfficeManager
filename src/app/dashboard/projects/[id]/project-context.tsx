@@ -117,7 +117,7 @@ export function ProjectDetailProvider({ children }: { children: ReactNode }) {
   const [newContact, setNewContact] = useState<Record<string, string>>({ name: '', phone: '', email: '', title: '' });
   const [isEditingOverallFee, setIsEditingOverallFee] = useState(false);
   const [tempFeeInput, setTempFeeInput] = useState('');
-  const [newPayment, setNewPayment] = useState<Record<string, string>>({ amount: '', notes: '' });
+  const [newPayment, setNewPayment] = useState<Record<string, string>>({ amount: '', notes: '', datePaid: new Date().toISOString().slice(0, 10) });
   const [newMilestone, setNewMilestone] = useState<Record<string, string>>({ name: '', feeAmount: '' });
   const [newDoc, setNewDoc] = useState<Record<string, string>>({ title: '', url: '' });
   const [milestoneNoteInputs, setMilestoneNoteInputs] = useState<Record<string, string>>({});
@@ -321,10 +321,10 @@ export function ProjectDetailProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch(`/api/projects/${params.id}/payments`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPayment)
+        body: JSON.stringify({ ...newPayment, amount: Number(newPayment.amount) })
       });
       if (res.ok) {
-        setNewPayment({ amount: '', notes: '' });
+        setNewPayment({ amount: '', notes: '', datePaid: new Date().toISOString().slice(0, 10) });
         showToast('Payment recorded', 'success');
         fetchProject();
       } else {
