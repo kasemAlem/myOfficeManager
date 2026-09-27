@@ -147,7 +147,10 @@ async function performBackup() {
 
 function streamDumpToFile(cmd, args, destFile) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(cmd, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, PGCLIENTENCODING: 'UTF8' },
+    });
     let stderr = '';
     child.stderr.on('data', d => { stderr += d.toString(); });
 
@@ -171,10 +174,10 @@ function streamDumpToFile(cmd, args, destFile) {
 
   try {
     try {
-      await streamDumpToFile('pg_dump', [DATABASE_URL], backupFile);
+      await streamDumpToFile('pg_dump', ['--encoding=UTF8', DATABASE_URL], backupFile);
     } catch (hostErr) {
       console.log('ℹ️   Host pg_dump failed or not found. Trying via Docker container (officemanager-db)...');
-      await streamDumpToFile('docker', ['exec', 'officemanager-db', 'pg_dump', '-U', 'postgres', 'officemanager'], backupFile);
+      await streamDumpToFile('docker', ['exec', '-e', 'PGCLIENTENCODING=UTF8', 'officemanager-db', 'pg_dump', '-U', 'postgres', '--encoding=UTF8', 'officemanager'], backupFile);
     }
 
     const stats = fs.statSync(backupFile);

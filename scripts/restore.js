@@ -131,7 +131,10 @@ async function performRestore(targetFile) {
 function streamRestoreFromFile(srcFile) {
   const tryPsql = (cmd, args) => {
     return new Promise((resolve, reject) => {
-      const child = spawn(cmd, args, { stdio: ['pipe', 'inherit', 'pipe'] });
+      const child = spawn(cmd, args, {
+        stdio: ['pipe', 'inherit', 'pipe'],
+        env: { ...process.env, PGCLIENTENCODING: 'UTF8' },
+      });
       let stderr = '';
       child.stderr.on('data', d => { stderr += d.toString(); });
 
@@ -155,7 +158,7 @@ function streamRestoreFromFile(srcFile) {
 
   return tryPsql('psql', [DATABASE_URL]).catch(() => {
     console.log('ℹ️   Host psql failed or not found. Trying via Docker container (officemanager-db)...');
-    return tryPsql('docker', ['exec', '-i', 'officemanager-db', 'psql', '-U', 'postgres', 'officemanager']);
+    return tryPsql('docker', ['exec', '-i', '-e', 'PGCLIENTENCODING=UTF8', 'officemanager-db', 'psql', '-U', 'postgres', 'officemanager']);
   });
 }
 
