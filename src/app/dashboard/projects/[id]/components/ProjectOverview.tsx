@@ -1,5 +1,5 @@
 'use client';
-import { Users, Wallet, Layers, FileText, Clock, CalendarClock } from 'lucide-react';
+import { Users, Wallet, Layers, FileText, Clock, CalendarClock, Trash2 } from 'lucide-react';
 import { useProjectDetail, TABS, type Tab } from '../project-context';
 import { MetricCard } from '@/components/MetricCard';
 import { formatCurrency } from '@/lib/formatCurrency';
@@ -34,6 +34,7 @@ export function ProjectOverview() {
     project, user, canEdit, isEditing, editFields, setEditFields,
     totalPaid, balanceDue, completedMilestones, totalMilestones,
     currency, locale, startEditing, handleSaveEdits, setIsEditing, setActiveTab,
+    setShowDeleteConfirm,
   } = useProjectDetail();
 
   const handleTabNav = (tab: Tab) => setActiveTab(tab);
@@ -46,12 +47,55 @@ export function ProjectOverview() {
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
           {canEdit && (
             isEditing ? (
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <button onClick={handleSaveEdits} style={{ padding: '0.5rem 0.9rem', background: 'var(--accent-success)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}>Save</button>
                 <button onClick={() => setIsEditing(false)} style={{ padding: '0.5rem 0.8rem', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: '6px', cursor: 'pointer', fontSize: '0.82rem' }}>Cancel</button>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  aria-label="Delete project"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.5rem 0.85rem',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.82rem',
+                    marginLeft: '0.5rem',
+                  }}
+                >
+                  <Trash2 size={14} /> Delete
+                </button>
               </div>
             ) : (
-              <button onClick={startEditing} aria-label="Edit project details" style={{ padding: '0.5rem 0.8rem', background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}>Edit</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button onClick={startEditing} aria-label="Edit project details" style={{ padding: '0.5rem 0.8rem', background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}>Edit</button>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  aria-label="Delete project"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.5rem 0.8rem',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  <Trash2 size={13} /> Delete
+                </button>
+              </div>
             )
           )}
         </div>
