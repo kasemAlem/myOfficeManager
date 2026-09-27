@@ -7,6 +7,8 @@ interface BadgeProps {
   size?: 'sm' | 'md';
   icon?: React.ReactNode;
   pulse?: boolean;
+  style?: React.CSSProperties;
+  className?: string;
   children: React.ReactNode;
 }
 
@@ -26,10 +28,10 @@ const labelMap: Record<BadgeVariant, string> = {
   info: 'Information status',
 };
 
-export function Badge({ variant = 'default', size = 'sm', icon, pulse, children }: BadgeProps) {
-  const v = variantMap[variant];
+export function Badge({ variant = 'default', size = 'sm', icon, pulse, style, className, children }: BadgeProps) {
+  const v = variantMap[variant] || variantMap.default;
   return (
-    <span role="status" aria-label={labelMap[variant]} className={pulse ? 'badge-pulse' : undefined} style={{
+    <span role="status" aria-label={labelMap[variant]} className={[pulse ? 'badge-pulse' : '', className].filter(Boolean).join(' ') || undefined} style={{
       display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
       padding: size === 'sm' ? '0.3rem 0.6rem' : '0.4rem 0.8rem',
       borderRadius: '8px', fontSize: size === 'sm' ? '0.7rem' : '0.8rem',
@@ -37,6 +39,7 @@ export function Badge({ variant = 'default', size = 'sm', icon, pulse, children 
       background: v.bg, color: v.color, border: `1px solid ${v.color}33`,
       '--pulse-color': `${v.color}66`,
       whiteSpace: 'nowrap',
+      ...style,
     } as React.CSSProperties}>
       {icon}
       {children}

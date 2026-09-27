@@ -468,6 +468,15 @@ export default function DeadlinesPage() {
 
                 const dateInputValue = project.dueDate ? new Date(project.dueDate).toISOString().slice(0, 10) : '';
 
+                let statusVariant: 'default' | 'success' | 'warning' | 'danger' | 'info' = 'info';
+                if (['completed', 'done'].includes((project.status || '').toLowerCase())) {
+                  statusVariant = 'success';
+                } else if (['delayed', 'paused', 'on hold'].includes((project.status || '').toLowerCase())) {
+                  statusVariant = 'danger';
+                } else if (['planning', 'review'].some((t: string) => (project.status || '').toLowerCase().includes(t))) {
+                  statusVariant = 'warning';
+                }
+
                 return (
                   <div
                     key={project.id}
@@ -513,7 +522,7 @@ export default function DeadlinesPage() {
 
                     {/* Phase Status */}
                     <div>
-                      <Badge variant="outline" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                      <Badge variant={statusVariant}>
                         {project.status || 'Planning'}
                       </Badge>
                     </div>
