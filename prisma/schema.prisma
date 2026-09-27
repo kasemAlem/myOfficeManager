@@ -42,6 +42,7 @@ model Project {
   status        String             @default("PLANNING")
   address       String?
   notes         String?
+  dueDate       DateTime?
   budget        Float?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt

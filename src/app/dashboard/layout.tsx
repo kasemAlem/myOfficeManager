@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Home, Users, Settings, LogOut, PiggyBank, Clock, Menu, X, Archive } from 'lucide-react';
+import { Home, Users, Settings, LogOut, PiggyBank, Clock, Menu, X, Archive, CalendarClock } from 'lucide-react';
 import { ThemeSelector } from '@/components/ThemeSelector';
 import { ToastProvider } from '@/components/ToastProvider';
 import { CommandPalette } from '@/components/CommandPalette';
@@ -18,6 +18,7 @@ function DashboardSidebar({ user }: { user: any }) {
   const allNavItems = [
     { name: t('nav.projects'), href: '/dashboard', icon: Home },
     { name: t('nav.timesheets'), href: '/dashboard/timesheets', icon: Clock },
+    { name: t('nav.deadlines'), href: '/dashboard/deadlines', icon: CalendarClock },
     { name: t('nav.financials'), href: '/dashboard/financials', icon: PiggyBank, restricted: true },
     { name: t('nav.team'), href: '/dashboard/team', icon: Users, restricted: true },
     { name: t('nav.archive'), href: '/dashboard/archive', icon: Archive },

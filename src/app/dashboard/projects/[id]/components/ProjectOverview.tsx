@@ -1,19 +1,44 @@
 'use client';
-import { Users, Wallet, Layers, FileText, Clock } from 'lucide-react';
+import { Users, Wallet, Layers, FileText, Clock, CalendarClock } from 'lucide-react';
 import { useProjectDetail, TABS, type Tab } from '../project-context';
 import { MetricCard } from '@/components/MetricCard';
 import { formatCurrency } from '@/lib/formatCurrency';
 
 const overviewNavTabs = TABS.filter(t => t.id !== 'overview');
 
+function getDueDateInfo(dueDate: string | null | undefined): { label: string; color: string; variant: 'overdue' | 'due-soon' | 'on-track' | 'none' } {
+  if (!dueDate) return { label: 'Not set', color: 'var(--text-muted)', variant: 'none' };
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  const diffMs = due.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return { label: `${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''} overdue`, color: 'var(--accent-danger)', variant: 'overdue' };
+  }
+  if (diffDays === 0) {
+    return { label: 'Due today', color: 'var(--accent-danger)', variant: 'overdue' };
+  }
+  if (diffDays <= 14) {
+    return { label: `${diffDays} day${diffDays !== 1 ? 's' : ''} left`, color: 'var(--accent-warning)', variant: 'due-soon' };
+  }
+  return { label: `${diffDays} days left`, color: 'var(--accent-success)', variant: 'on-track' };
+}
+
+export { getDueDateInfo };
+
 export function ProjectOverview() {
   const {
     project, user, canEdit, isEditing, editFields, setEditFields,
     totalPaid, balanceDue, completedMilestones, totalMilestones,
-    currency, startEditing, handleSaveEdits, setIsEditing, setActiveTab,
+    currency, locale, startEditing, handleSaveEdits, setIsEditing, setActiveTab,
   } = useProjectDetail();
 
   const handleTabNav = (tab: Tab) => setActiveTab(tab);
+
+  const dueDateInfo = getDueDateInfo(project.dueDate);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -45,8 +70,39 @@ export function ProjectOverview() {
               edit: <input aria-label="Project address" placeholder="e.g. 123 Main St" value={editFields.address} onChange={e => setEditFields({ ...editFields, address: e.target.value })}
                 style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: '0.95rem', width: '100%', padding: 0 }} />,
             },
-          ].map((row, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '180px 1fr', alignItems: 'center', borderBottom: i < 1 ? '1px solid var(--border-color)' : 'none', background: i % 2 === 0 ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.05)' }}>
+            {
+              label: 'Due Date',
+              view: (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <CalendarClock size={16} color={dueDateInfo.color} />
+                  <span style={{ color: project.dueDate ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '0.95rem' }}>
+                    {project.dueDate ? new Date(project.dueDate).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+                  </span>
+                  {project.dueDate && (
+                    <span style={{
+                      fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.55rem',
+                      borderRadius: '6px',
+                      background: dueDateInfo.variant === 'overdue' ? 'rgba(239,68,68,0.12)' :
+                                   dueDateInfo.variant === 'due-soon' ? 'rgba(245,158,11,0.12)' :
+                                   'rgba(16,185,129,0.12)',
+                      color: dueDateInfo.color,
+                    }}>
+                      {dueDateInfo.label}
+                    </span>
+                  )}
+                </div>
+              ),
+              edit: canEdit ? (
+                <input type="date" aria-label="Project due date" value={editFields.dueDate || ''} onChange={e => setEditFields({ ...editFields, dueDate: e.target.value })}
+                  style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: '0.95rem', padding: 0, colorScheme: 'dark' }} />
+              ) : (
+                <span style={{ color: project.dueDate ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '0.95rem' }}>
+                  {project.dueDate ? new Date(project.dueDate).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+                </span>
+              ),
+            },
+          ].map((row, i, arr) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '180px 1fr', alignItems: 'center', borderBottom: i < arr.length - 1 ? '1px solid var(--border-color)' : 'none', background: i % 2 === 0 ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.05)' }}>
               <div style={{ padding: '0.85rem 1rem', borderRight: '1px solid var(--border-color)' }}>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{row.label}</span>
               </div>

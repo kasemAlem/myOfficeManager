@@ -60,6 +60,7 @@ export async function POST(request: Request) {
         budget: Number(data.totalFees),
         status: initialStatus,
         notes: data.notes || '',
+        dueDate: (data.dueDate && (session.role === 'ADMIN' || session.role === 'MANAGER')) ? new Date(data.dueDate) : null,
         ...(data.contact?.name ? {
           contacts: {
             create: [{

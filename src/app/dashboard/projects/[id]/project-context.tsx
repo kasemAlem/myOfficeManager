@@ -192,6 +192,7 @@ export function ProjectDetailProvider({ children }: { children: ReactNode }) {
       totalFees: String(project?.totalFees || ''),
       address: project?.address || '',
       notes: project?.notes || '',
+      dueDate: project?.dueDate ? new Date(project.dueDate).toISOString().slice(0, 10) : '',
     });
     setIsEditing(true);
   }, [project]);
@@ -206,6 +207,7 @@ export function ProjectDetailProvider({ children }: { children: ReactNode }) {
           totalFees: Number(editFields.totalFees),
           address: editFields.address,
           notes: editFields.notes,
+          dueDate: editFields.dueDate || null,
         })
       });
       setIsEditing(false);

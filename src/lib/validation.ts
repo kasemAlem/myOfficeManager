@@ -26,6 +26,7 @@ export const projectSchema = z.object({
   status: z.string().optional(),
   address: z.string().optional(),
   notes: z.string().optional(),
+  dueDate: z.string().optional(),
   budget: z.number().optional(),
   contact: z.object({
     name: z.string(),

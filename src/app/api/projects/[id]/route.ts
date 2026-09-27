@@ -64,6 +64,10 @@ export async function PUT(
     if (data.totalFees !== undefined && data.totalFees !== null) {
       updateData.totalFees = Number(data.totalFees);
     }
+    // Only ADMIN and MANAGER can set/edit the due date
+    if (data.dueDate !== undefined && (session.role === 'ADMIN' || session.role === 'MANAGER')) {
+      updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    }
 
     const project = await prisma.project.update({
       where: { id },

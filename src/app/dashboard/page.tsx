@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Plus, ExternalLink, Archive, Activity, Circle, DollarSign, Trash2, Search, Briefcase, TrendingUp, Wallet } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Plus, ExternalLink, Archive, Activity, Circle, DollarSign, Trash2, Search, Briefcase, TrendingUp, Wallet, CalendarClock } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
@@ -20,7 +20,8 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [phases, setPhases] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newProject, setNewProject] = useState({ name: '', totalFees: 0 });
+  const [activeViewTab, setActiveViewTab] = useState<'all' | 'by_due_date'>('all');
+  const [newProject, setNewProject] = useState({ name: '', totalFees: 0, dueDate: '' });
   const [newContact, setNewContact] = useState({ name: '', title: '', email: '', phone: '' });
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -75,10 +76,13 @@ export default function DashboardPage() {
     }
     setCreating(true);
     try {
-      const payload = {
+      const payload: any = {
         ...newProject,
+        totalFees: Number(newProject.totalFees),
         contact: newContact.name ? newContact : null,
       };
+      // Only include dueDate if set
+      if (!payload.dueDate) delete payload.dueDate;
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -86,7 +90,7 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         setIsModalOpen(false);
-        setNewProject({ name: '', totalFees: 0 });
+        setNewProject({ name: '', totalFees: 0, dueDate: '' });
         setNewContact({ name: '', title: '', email: '', phone: '' });
         showToast('Project created successfully', 'success');
         fetchBoard();
@@ -100,25 +104,41 @@ export default function DashboardPage() {
     }
   };
 
-  const activeProjects = projects.filter(p => {
-    const totalPaid = p.payments?.reduce((sum: number, pay: any) => sum + pay.amount, 0) || 0;
-    const balanceDue = p.totalFees - totalPaid;
-    const lastPhaseName = phases.length > 0 ? phases[phases.length - 1].name : null;
-    const isArchived = balanceDue <= 0 && p.status === lastPhaseName;
-    if (isArchived) return false;
+  const activeProjects = useMemo(() => {
+    return projects.filter(p => {
+      const totalPaid = p.payments?.reduce((sum: number, pay: any) => sum + pay.amount, 0) || 0;
+      const balanceDue = p.totalFees - totalPaid;
+      const lastPhaseName = phases.length > 0 ? phases[phases.length - 1].name : null;
+      const isArchived = balanceDue <= 0 && p.status === lastPhaseName;
+      if (isArchived) return false;
 
-    if (searchTerm.trim() !== '') {
-      const term = searchTerm.toLowerCase();
-      const matchName = p.name?.toLowerCase().includes(term);
-      const matchClientName = p.clientName?.toLowerCase().includes(term);
-      const matchClientPhone = p.clientPhone?.toLowerCase().includes(term);
-      const matchContacts = p.contacts && p.contacts.some((c: any) =>
-        c.name?.toLowerCase().includes(term) || c.phone?.toLowerCase().includes(term)
-      );
-      if (!matchName && !matchClientName && !matchClientPhone && !matchContacts) return false;
+      if (searchTerm.trim() !== '') {
+        const term = searchTerm.toLowerCase();
+        const matchName = p.name?.toLowerCase().includes(term);
+        const matchClientName = p.clientName?.toLowerCase().includes(term);
+        const matchClientPhone = p.clientPhone?.toLowerCase().includes(term);
+        const matchContacts = p.contacts && p.contacts.some((c: any) =>
+          c.name?.toLowerCase().includes(term) || c.phone?.toLowerCase().includes(term)
+        );
+        if (!matchName && !matchClientName && !matchClientPhone && !matchContacts) return false;
+      }
+      return true;
+    });
+  }, [projects, phases, searchTerm]);
+
+  const displayedProjects = useMemo(() => {
+    if (activeViewTab === 'by_due_date') {
+      return [...activeProjects].sort((a, b) => {
+        const timeA = a.dueDate ? new Date(a.dueDate).getTime() : null;
+        const timeB = b.dueDate ? new Date(b.dueDate).getTime() : null;
+        if (timeA === null && timeB === null) return 0;
+        if (timeA === null) return 1;
+        if (timeB === null) return -1;
+        return timeA - timeB;
+      });
     }
-    return true;
-  });
+    return activeProjects;
+  }, [activeProjects, activeViewTab]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -158,6 +178,11 @@ export default function DashboardPage() {
               leftIcon={<Search size={16} />}
               style={{ minWidth: '220px' }}
             />
+            <Link href="/dashboard/deadlines" style={{ textDecoration: 'none' }}>
+              <Button variant="secondary" icon={<CalendarClock size={18} />}>
+                Deadlines
+              </Button>
+            </Link>
             <Link href="/dashboard/archive" style={{ textDecoration: 'none' }}>
               <Button variant="secondary" icon={<Archive size={18} />}>
                 Archive
@@ -212,6 +237,63 @@ export default function DashboardPage() {
         )}
 
         <div className="glass-panel scroll-shadow-x" style={{ flex: 1, padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', flexDirection: 'column' }}>
+          {/* View Tabs */}
+          <div role="tablist" aria-label="Project views" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                role="tab"
+                aria-selected={activeViewTab === 'all'}
+                onClick={() => setActiveViewTab('all')}
+                style={{
+                  background: activeViewTab === 'all' ? 'rgba(16, 185, 129, 0.12)' : 'transparent',
+                  color: activeViewTab === 'all' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  border: activeViewTab === 'all' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid transparent',
+                  borderRadius: '8px',
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>All Projects</span>
+                <span style={{ fontSize: '0.75rem', opacity: 0.8, background: 'rgba(255,255,255,0.08)', padding: '0.1rem 0.4rem', borderRadius: '10px' }}>
+                  {activeProjects.length}
+                </span>
+              </button>
+
+              <button
+                role="tab"
+                aria-selected={activeViewTab === 'by_due_date'}
+                onClick={() => setActiveViewTab('by_due_date')}
+                style={{
+                  background: activeViewTab === 'by_due_date' ? 'rgba(16, 185, 129, 0.12)' : 'transparent',
+                  color: activeViewTab === 'by_due_date' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  border: activeViewTab === 'by_due_date' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid transparent',
+                  borderRadius: '8px',
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <CalendarClock size={15} />
+                <span>Order by Due Date</span>
+              </button>
+            </div>
+
+            <Link href="/dashboard/deadlines" style={{ textDecoration: 'none', fontSize: '0.8rem', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
+              Full Deadlines Board &rarr;
+            </Link>
+          </div>
+
           {/* Table Header */}
           <div style={{ display: 'grid', gridTemplateColumns: user?.role === 'EMPLOYEE' ? 'minmax(200px, 2fr) 1.5fr 1.5fr 150px 50px' : 'minmax(200px, 1.5fr) 1fr 1fr 1.25fr 1fr 1fr 150px 50px', gap: '1rem', padding: '0 1rem 1rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '1rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
             <div>Project Name</div>
@@ -226,7 +308,7 @@ export default function DashboardPage() {
 
           {/* Table Rows */}
           <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingRight: '0.5rem' }}>
-            {activeProjects.length === 0 ? (
+            {displayedProjects.length === 0 ? (
               <EmptyState
                 icon={Search}
                 title={searchTerm ? 'No projects match your search' : 'No active projects'}
@@ -235,7 +317,7 @@ export default function DashboardPage() {
                 onAction={searchTerm ? undefined : () => setIsModalOpen(true)}
               />
             ) : (
-              activeProjects.map((project, index) => {
+              displayedProjects.map((project, index) => {
                 const totalPaid = project.payments?.reduce((sum: number, pay: any) => sum + pay.amount, 0) || 0;
                 const balanceDue = (project.totalFees || 0) - totalPaid;
                 const progress = project.milestones && project.milestones.length > 0
@@ -271,6 +353,19 @@ export default function DashboardPage() {
                   }}>
                     <div>
                       <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem', letterSpacing: '-0.01em' }}>{project.name}</span>
+                      {project.dueDate && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
+                          <CalendarClock size={12} color={new Date(project.dueDate) < new Date() ? 'var(--accent-danger)' : 'var(--accent-warning)'} />
+                          <span style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            color: new Date(project.dueDate) < new Date() ? 'var(--accent-danger)' : 'var(--text-muted)'
+                          }}>
+                            Due {new Date(project.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {new Date(project.dueDate) < new Date() && ' • Overdue'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{project.clientName}</div>
 
@@ -393,7 +488,7 @@ export default function DashboardPage() {
         )}
 
         {/* Create Project Modal */}
-        <Modal open={isModalOpen} onClose={() => { setIsModalOpen(false); setNewProject({ name: '', totalFees: 0 }); setNewContact({ name: '', title: '', email: '', phone: '' }); }} title="New Project" width="580px">
+        <Modal open={isModalOpen} onClose={() => { setIsModalOpen(false); setNewProject({ name: '', totalFees: 0, dueDate: '' }); setNewContact({ name: '', title: '', email: '', phone: '' }); }} title="New Project" width="580px">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>Project Details</label>
@@ -409,6 +504,18 @@ export default function DashboardPage() {
                 value={newProject.totalFees || ''} onChange={e => setNewProject({ ...newProject, totalFees: Number(e.target.value) })}
                 aria-label="Total contract fee"
               />
+              {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <CalendarClock size={16} color="var(--text-muted)" />
+                  <Input
+                    type="date"
+                    placeholder="Due Date (optional)"
+                    value={newProject.dueDate} onChange={e => setNewProject({ ...newProject, dueDate: e.target.value })}
+                    aria-label="Project due date"
+                    style={{ colorScheme: 'dark' }}
+                  />
+                </div>
+              )}
             </div>
 
             <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
@@ -446,7 +553,7 @@ export default function DashboardPage() {
               <Button onClick={handleCreate} loading={creating} variant="primary" style={{ flex: 1.5 }}>
                 Create Project
               </Button>
-              <Button onClick={() => { setIsModalOpen(false); setNewProject({ name: '', totalFees: 0 }); setNewContact({ name: '', title: '', email: '', phone: '' }); }} variant="secondary" style={{ flex: 1 }}>
+              <Button onClick={() => { setIsModalOpen(false); setNewProject({ name: '', totalFees: 0, dueDate: '' }); setNewContact({ name: '', title: '', email: '', phone: '' }); }} variant="secondary" style={{ flex: 1 }}>
                 Cancel
               </Button>
             </div>
