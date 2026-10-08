@@ -1,3 +1,3 @@
 # Nudge-migration simulation target. Renovate rewrites the digest below on each
 # successful build of devfile-sample-python-basic-f5a5e in rhtap-integration-tenant.
-image: quay.io/redhat-user-workloads/rhtap-integration-tenant/devfile-sample-python-basic-f5a5e@sha256:0000000000000000000000000000000000000000000000000000000000000000
+image: quay.io/redhat-user-workloads/rhtap-integration-tenant/devfile-sample-python-basic-f5a5e@sha256:0f03c59f9a438b2614c852a62f81bbb786d8994d13932433f1f181bc6a007fea
